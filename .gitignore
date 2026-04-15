@@ -1,0 +1,4 @@
+node_modules/
+.env
+.claude/
+google-service-account.json
