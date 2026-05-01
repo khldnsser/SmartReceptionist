@@ -1,38 +1,98 @@
 import type OpenAI from 'openai';
+import { supabase } from '../db/client';
 
 type ChatMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
-const MAX_MESSAGES = 15;
+const WINDOW_SIZE = 25;
 
-// In-memory store keyed by session ID (WhatsApp wa_id).
-// Replace this map with a Redis or DB-backed store for production persistence.
-const store = new Map<string, ChatMessage[]>();
-
-/**
- * Returns the conversation history for a session (up to MAX_MESSAGES).
- */
-export function getHistory(sessionId: string): ChatMessage[] {
-  return store.get(sessionId) ?? [];
+interface MessageRow {
+  wa_id: string;
+  role: string;
+  content: string | null;
+  tool_calls: unknown;
+  tool_call_id: string | null;
 }
 
-/**
- * Appends a message to the session history and enforces the sliding window cap.
- */
-export function addMessage(sessionId: string, message: ChatMessage): void {
-  const history = store.get(sessionId) ?? [];
-  history.push(message);
+function rowToMessage(row: MessageRow): ChatMessage {
+  const base = { role: row.role as ChatMessage['role'] };
 
-  // Keep only the most recent MAX_MESSAGES entries
-  if (history.length > MAX_MESSAGES) {
-    history.splice(0, history.length - MAX_MESSAGES);
+  if (row.role === 'tool') {
+    return {
+      ...base,
+      role: 'tool',
+      tool_call_id: row.tool_call_id ?? '',
+      content: row.content ?? '',
+    };
   }
 
-  store.set(sessionId, history);
+  if (row.role === 'assistant' && row.tool_calls) {
+    return {
+      ...base,
+      role: 'assistant',
+      content: row.content ?? null,
+      tool_calls: row.tool_calls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[],
+    };
+  }
+
+  return { ...base, content: row.content ?? '' } as ChatMessage;
+}
+
+function messageToRow(waId: string, msg: ChatMessage): MessageRow {
+  const row: MessageRow = {
+    wa_id: waId,
+    role: msg.role,
+    content: null,
+    tool_calls: null,
+    tool_call_id: null,
+  };
+
+  if ('content' in msg && typeof msg.content === 'string') {
+    row.content = msg.content;
+  }
+  if (msg.role === 'assistant' && 'tool_calls' in msg && msg.tool_calls) {
+    row.tool_calls = msg.tool_calls;
+  }
+  if (msg.role === 'tool' && 'tool_call_id' in msg) {
+    row.tool_call_id = msg.tool_call_id ?? null;
+  }
+
+  return row;
 }
 
 /**
- * Clears all conversation history for a session.
+ * Returns the last WINDOW_SIZE messages for a session, in chronological order.
  */
-export function clearHistory(sessionId: string): void {
-  store.delete(sessionId);
+export async function getHistory(sessionId: string): Promise<ChatMessage[]> {
+  const { data, error } = await supabase
+    .from('conversation_messages')
+    .select('role, content, tool_calls, tool_call_id')
+    .eq('wa_id', sessionId)
+    .order('created_at', { ascending: false })
+    .limit(WINDOW_SIZE);
+
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  // Reverse so the result is oldest → newest (chronological for the LLM)
+  return (data as MessageRow[]).reverse().map(rowToMessage);
+}
+
+/**
+ * Persists a single message to the sliding-window store.
+ */
+export async function addMessage(sessionId: string, message: ChatMessage): Promise<void> {
+  const row = messageToRow(sessionId, message);
+  const { error } = await supabase.from('conversation_messages').insert(row);
+  if (error) throw error;
+}
+
+/**
+ * Deletes all conversation history for a session.
+ */
+export async function clearHistory(sessionId: string): Promise<void> {
+  const { error } = await supabase
+    .from('conversation_messages')
+    .delete()
+    .eq('wa_id', sessionId);
+  if (error) throw error;
 }

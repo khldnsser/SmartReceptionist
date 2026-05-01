@@ -15,7 +15,7 @@ const openai = new OpenAI({ apiKey: config.openai.apiKey });
  * 5. Persists the user message and assistant response to memory.
  */
 export async function runAgent(sessionId: string, userMessage: string): Promise<string> {
-  const history = getHistory(sessionId);
+  const history = await getHistory(sessionId);
 
   // Build the full messages array: system + history + new user message
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -42,7 +42,7 @@ export async function runAgent(sessionId: string, userMessage: string): Promise<
     const toolResults = await Promise.all(
       toolCalls.map(async (tc) => {
         const args = JSON.parse(tc.function.arguments) as Record<string, unknown>;
-        const result = await executeTool(tc.function.name, args);
+        const result = await executeTool(sessionId, tc.function.name, args);
         return {
           role: 'tool' as const,
           tool_call_id: tc.id,
@@ -65,8 +65,8 @@ export async function runAgent(sessionId: string, userMessage: string): Promise<
   const responseText = response.choices[0]?.message?.content ?? '';
 
   // Persist the user turn and agent response to session memory
-  addMessage(sessionId, { role: 'user', content: userMessage });
-  addMessage(sessionId, { role: 'assistant', content: responseText });
+  await addMessage(sessionId, { role: 'user', content: userMessage });
+  await addMessage(sessionId, { role: 'assistant', content: responseText });
 
   return responseText;
 }

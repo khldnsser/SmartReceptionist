@@ -83,19 +83,24 @@ function roundUpToSlotBoundary(dt: DateTime): DateTime {
 }
 
 /**
- * Returns the next N available appointment slots, starting from now + lead-time hours.
+ * Returns the next N available appointment slots.
+ * @param now       Current datetime (used to enforce the min lead-time).
+ * @param existingEvents  Existing calendar events to check conflicts against.
+ * @param searchFrom  Optional: start searching from this datetime instead of now+leadTime.
+ *                    If earlier than the lead-time boundary it is ignored.
  */
 export function getNextAvailableSlots(
   now: DateTime,
   existingEvents: CalendarEvent[],
+  searchFrom?: DateTime,
 ): TimeSlot[] {
   const slots: TimeSlot[] = [];
   const slotMin = duration();
   const count = config.business.slotsToOffer;
 
-  let candidate = roundUpToSlotBoundary(
-    now.plus({ hours: config.business.minBookingLeadHours }),
-  );
+  const leadTimeBoundary = now.plus({ hours: config.business.minBookingLeadHours });
+  const rawStart = searchFrom && searchFrom > leadTimeBoundary ? searchFrom : leadTimeBoundary;
+  let candidate = roundUpToSlotBoundary(rawStart);
 
   let iterations = 0;
   while (slots.length < count && iterations < 2000) {

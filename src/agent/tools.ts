@@ -1,13 +1,16 @@
 import type OpenAI from 'openai';
 import { DateTime } from 'luxon';
 import * as calendar from '../tools/calendar';
-import * as sheets from '../tools/sheets';
 import * as gmail from '../tools/gmail';
+import * as clients from '../db/clients';
+import * as appointments from '../db/appointments';
+import { getNextAvailableSlots } from '../tools/availability';
 import { config } from '../config';
 
 // ─── Tool Definitions (OpenAI function-calling schema) ────────────────────────
 
 export const TOOL_DEFINITIONS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+  // ── Calendar ────────────────────────────────────────────────────────────────
   {
     type: 'function',
     function: {
@@ -34,7 +37,7 @@ export const TOOL_DEFINITIONS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'calendar_create',
-      description: 'Create a new 30-minute appointment event on the clinic calendar.',
+      description: 'Create a new 30-minute appointment event on the clinic calendar. Returns the event object including its id — pass that id to create_appointment.',
       parameters: {
         type: 'object',
         properties: {
@@ -65,18 +68,42 @@ export const TOOL_DEFINITIONS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           eventId: {
             type: 'string',
-            description: 'The ID of the calendar event to delete.',
+            description: 'The Google Calendar event ID to delete.',
           },
         },
         required: ['eventId'],
       },
     },
   },
+
+  // ── Availability ────────────────────────────────────────────────────────────
   {
     type: 'function',
     function: {
-      name: 'sheets_read',
-      description: 'Read all patient records from the appointments sheet.',
+      name: 'get_available_slots',
+      description:
+        'Returns the next 5 available 30-minute appointment slots, respecting office hours and existing bookings. ' +
+        'Pass preferred_date (YYYY-MM-DD) if the patient expressed a day preference; omit it to get the next 5 slots from now.',
+      parameters: {
+        type: 'object',
+        properties: {
+          preferred_date: {
+            type: 'string',
+            description: 'Optional date in YYYY-MM-DD format. Slots will be searched starting from the beginning of this day.',
+          },
+        },
+        required: [],
+      },
+    },
+  },
+
+  // ── Client (long-term memory) ────────────────────────────────────────────────
+  {
+    type: 'function',
+    function: {
+      name: 'get_client',
+      description:
+        'Retrieve the current patient\'s profile from the database using their WhatsApp ID. Returns null if no profile exists yet.',
       parameters: {
         type: 'object',
         properties: {},
@@ -87,62 +114,120 @@ export const TOOL_DEFINITIONS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'sheets_add_row',
+      name: 'upsert_client',
       description:
-        'Add a new patient record row to the sheet. Only call this when the email is not already in the sheet.',
+        'Create or update the current patient\'s profile. Call this whenever you collect or change any patient detail (name, email, phone, age, medical history).',
       parameters: {
         type: 'object',
         properties: {
-          email: {
+          email: { type: 'string', description: "Patient's email address." },
+          name: { type: 'string', description: "Patient's full name." },
+          phone: {
             type: 'string',
-            description: "Patient's email address (unique identifier).",
+            description: 'Phone number with country code, digits only (no + or spaces).',
+          },
+          age: { type: 'number', description: "Patient's age in years." },
+          medical_history: {
+            type: 'string',
+            description: 'Free-form medical history, conditions, or notes. Append new information rather than overwriting.',
           },
         },
-        required: ['email'],
+        required: [],
       },
     },
   },
   {
     type: 'function',
     function: {
-      name: 'sheets_update_row',
-      description:
-        "Update an existing patient's record matched by email. Only update fields provided.",
+      name: 'update_client',
+      description: 'Update specific fields on the current patient\'s existing profile.',
       parameters: {
         type: 'object',
         properties: {
-          email: {
-            type: 'string',
-            description: "Patient's email address (used to find the row).",
-          },
-          name: { type: 'string', description: "Patient's full name." },
-          phone: {
-            type: 'string',
-            description:
-              "Phone number with country code. No '+' sign, no spaces.",
-          },
-          timeZone: {
-            type: 'string',
-            description: "Patient's location or city in Lebanon.",
-          },
-          appointmentDate: {
-            type: 'string',
-            description: 'Confirmed appointment date and time in Beirut timezone.',
-          },
-          bookingStatus: {
-            type: 'string',
-            enum: ['confirmed', 'cancelled'],
-            description: 'Status of the appointment.',
-          },
-          intakeForm: {
-            type: 'string',
-            description: 'Topics or issues the patient wants to discuss.',
-          },
+          email: { type: 'string' },
+          name: { type: 'string' },
+          phone: { type: 'string' },
+          age: { type: 'number' },
+          medical_history: { type: 'string' },
         },
-        required: ['email'],
+        required: [],
       },
     },
   },
+
+  // ── Appointments (long-term memory) ─────────────────────────────────────────
+  {
+    type: 'function',
+    function: {
+      name: 'create_appointment',
+      description:
+        'Save a confirmed appointment to the database. Call this after calendar_create — pass the calendar event id returned by that call.',
+      parameters: {
+        type: 'object',
+        properties: {
+          appointment_date: {
+            type: 'string',
+            description: 'Confirmed appointment start datetime in ISO 8601 format (Beirut timezone).',
+          },
+          calendar_event_id: {
+            type: 'string',
+            description: 'The id of the Google Calendar event just created.',
+          },
+          intake_form: {
+            type: 'string',
+            description: "Topics or issues the patient wants to discuss.",
+          },
+        },
+        required: ['appointment_date', 'calendar_event_id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_appointments_for_client',
+      description:
+        "Retrieve all of the current patient's appointments (past and future). Use this to find an appointment's id or calendar_event_id before rescheduling or cancelling.",
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_appointment',
+      description: 'Update an existing appointment record (e.g. new date, status change, new calendar event id after rescheduling).',
+      parameters: {
+        type: 'object',
+        properties: {
+          appointment_id: {
+            type: 'string',
+            description: 'The UUID of the appointment to update.',
+          },
+          appointment_date: {
+            type: 'string',
+            description: 'New appointment datetime in ISO 8601 format (Beirut timezone).',
+          },
+          booking_status: {
+            type: 'string',
+            enum: ['pending', 'confirmed', 'cancelled', 'completed'],
+          },
+          calendar_event_id: {
+            type: 'string',
+            description: 'New calendar event id after rescheduling.',
+          },
+          intake_form: { type: 'string' },
+          reminder_sent: { type: 'boolean' },
+        },
+        required: ['appointment_id'],
+      },
+    },
+  },
+
+  // ── Gmail ────────────────────────────────────────────────────────────────────
   {
     type: 'function',
     function: {
@@ -151,18 +236,9 @@ export const TOOL_DEFINITIONS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: 'object',
         properties: {
-          to: {
-            type: 'string',
-            description: "Recipient's email address.",
-          },
-          subject: {
-            type: 'string',
-            description: 'Email subject line.',
-          },
-          message: {
-            type: 'string',
-            description: 'Email body containing booking details.',
-          },
+          to: { type: 'string', description: "Recipient's email address." },
+          subject: { type: 'string', description: 'Email subject line.' },
+          message: { type: 'string', description: 'Email body with booking details.' },
         },
         required: ['to', 'subject', 'message'],
       },
@@ -174,15 +250,14 @@ export const TOOL_DEFINITIONS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
 
 type ToolArgs = Record<string, unknown>;
 
-/**
- * Dispatches a tool call from the LLM to the appropriate service function.
- * Returns a JSON-serializable result string.
- */
-export async function executeTool(name: string, args: ToolArgs): Promise<string> {
+export async function executeTool(waId: string, name: string, args: ToolArgs): Promise<string> {
   try {
     switch (name) {
+      // ── Calendar ────────────────────────────────────────────────────────────
       case 'calendar_read': {
-        const timeMin = (args.timeMin as string) ?? DateTime.now().setZone(config.business.timezone).toISO()!;
+        const timeMin =
+          (args.timeMin as string) ??
+          DateTime.now().setZone(config.business.timezone).toISO()!;
         const events = await calendar.listEvents(timeMin, args.timeMax as string | undefined);
         return JSON.stringify(events);
       }
@@ -201,22 +276,60 @@ export async function executeTool(name: string, args: ToolArgs): Promise<string>
         return JSON.stringify(result);
       }
 
-      case 'sheets_read': {
-        const rows = await sheets.readAllRows();
-        return JSON.stringify(rows);
+      // ── Availability ────────────────────────────────────────────────────────
+      case 'get_available_slots': {
+        const now = DateTime.now().setZone(config.business.timezone);
+        let searchFrom: DateTime | undefined;
+        if (args.preferred_date) {
+          searchFrom = DateTime.fromISO(args.preferred_date as string, { zone: config.business.timezone }).startOf('day');
+        }
+        const events = await calendar.listEvents(now.toISO()!);
+        const slots = getNextAvailableSlots(now, events, searchFrom);
+        return JSON.stringify(slots);
       }
 
-      case 'sheets_add_row': {
-        const patient = await sheets.addRow(args.email as string);
-        return JSON.stringify(patient);
+      // ── Client ──────────────────────────────────────────────────────────────
+      case 'get_client': {
+        const client = await clients.getClientByWaId(waId);
+        return JSON.stringify(client);
       }
 
-      case 'sheets_update_row': {
-        const { email, ...fields } = args as { email: string } & Partial<sheets.Patient>;
-        const patient = await sheets.updateRow(email, fields);
-        return JSON.stringify(patient);
+      case 'upsert_client': {
+        const client = await clients.upsertClient(waId, args as clients.ClientFields);
+        return JSON.stringify(client);
       }
 
+      case 'update_client': {
+        const client = await clients.updateClient(waId, args as clients.ClientFields);
+        return JSON.stringify(client);
+      }
+
+      // ── Appointments ────────────────────────────────────────────────────────
+      case 'create_appointment': {
+        const client = await clients.getClientByWaId(waId);
+        if (!client) return JSON.stringify({ error: 'No client profile found. Call upsert_client first.' });
+        const appt = await appointments.createAppointment(client.id, {
+          appointment_date: args.appointment_date as string,
+          calendar_event_id: args.calendar_event_id as string | undefined,
+          intake_form: args.intake_form as string | undefined,
+        });
+        return JSON.stringify(appt);
+      }
+
+      case 'list_appointments_for_client': {
+        const client = await clients.getClientByWaId(waId);
+        if (!client) return JSON.stringify([]);
+        const appts = await appointments.listAppointmentsForClient(client.id);
+        return JSON.stringify(appts);
+      }
+
+      case 'update_appointment': {
+        const { appointment_id, ...fields } = args as unknown as { appointment_id: string } & appointments.AppointmentUpdate;
+        const appt = await appointments.updateAppointment(appointment_id, fields);
+        return JSON.stringify(appt);
+      }
+
+      // ── Gmail ────────────────────────────────────────────────────────────────
       case 'gmail_send': {
         const result = await gmail.sendConfirmationEmail(
           args.to as string,
@@ -231,6 +344,7 @@ export async function executeTool(name: string, args: ToolArgs): Promise<string>
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    console.error(`[TOOL ERROR] ${name}:`, message);
     return JSON.stringify({ error: message });
   }
 }

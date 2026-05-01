@@ -37,11 +37,14 @@ export const config = {
     model: optional('OPENAI_MODEL', 'gpt-4o-mini'),
   },
 
+  supabase: {
+    url: required('SUPABASE_URL'),
+    serviceRoleKey: required('SUPABASE_SERVICE_ROLE_KEY'),
+  },
+
   google: {
     get serviceAccountKey() { return loadServiceAccountKey(); },
     calendarId: required('GOOGLE_CALENDAR_ID'),
-    sheetId: required('GOOGLE_SHEET_ID'),
-    sheetName: optional('GOOGLE_SHEET_NAME', 'Appointments'),
     gmail: {
       clientId: required('GMAIL_CLIENT_ID'),
       clientSecret: required('GMAIL_CLIENT_SECRET'),
