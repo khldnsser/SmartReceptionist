@@ -4,3 +4,5 @@ node_modules/
 google-service-account.json
 .env.local
 web/.env.local
+.env.example
+web/.env.example
