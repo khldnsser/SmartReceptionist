@@ -2,3 +2,5 @@ node_modules/
 .env
 .claude/
 google-service-account.json
+.env.local
+web/.env.local

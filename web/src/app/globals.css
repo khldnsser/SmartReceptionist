@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-gray-900;
+  }
+}
+
+/* FullCalendar overrides */
+.fc-wrapper {
+  height: 100%;
+}
+.fc-wrapper .fc {
+  height: 100%;
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+.fc-wrapper .fc-button {
+  @apply bg-white border border-gray-300 text-gray-700 shadow-none font-medium text-sm py-1.5 px-3;
+}
+.fc-wrapper .fc-button:hover {
+  @apply bg-gray-50;
+}
+.fc-wrapper .fc-button-primary:not(:disabled).fc-button-active,
+.fc-wrapper .fc-button-primary:not(:disabled):active {
+  @apply bg-blue-600 border-blue-600 text-white;
+}
+.fc-wrapper .fc-event {
+  @apply cursor-pointer rounded text-xs font-medium border-0;
+}
+.fc-wrapper .fc-highlight {
+  @apply bg-blue-50;
+}

@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { config } from '../config';
 import { buildSystemPrompt } from './prompt';
 import { getHistory, addMessage } from './memory';
-import { TOOL_DEFINITIONS, executeTool } from './tools';
+import { TOOL_DEFINITIONS, executeTool } from './tools/index';
 
 const openai = new OpenAI({ apiKey: config.openai.apiKey });
 

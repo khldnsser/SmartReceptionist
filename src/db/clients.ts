@@ -26,7 +26,7 @@ export async function getClientByWaId(waId: string): Promise<Client | null> {
     .select('*')
     .eq('wa_id', waId)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(`${error.message} [${error.code}]`);
   return data;
 }
 
@@ -36,7 +36,7 @@ export async function getClientByEmail(email: string): Promise<Client | null> {
     .select('*')
     .ilike('email', email)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(`${error.message} [${error.code}]`);
   return data;
 }
 
@@ -50,7 +50,7 @@ export async function upsertClient(waId: string, fields: ClientFields): Promise<
     .upsert({ wa_id: waId, ...fields }, { onConflict: 'wa_id' })
     .select()
     .single();
-  if (error) throw error;
+  if (error) throw new Error(`${error.message} [${error.code}]`);
   return data;
 }
 
@@ -61,6 +61,6 @@ export async function updateClient(waId: string, fields: ClientFields): Promise<
     .eq('wa_id', waId)
     .select()
     .single();
-  if (error) throw error;
+  if (error) throw new Error(`${error.message} [${error.code}]`);
   return data;
 }

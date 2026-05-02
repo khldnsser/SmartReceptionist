@@ -9,6 +9,7 @@ export interface IncomingMessage {
   mediaId?: string;
   mimeType?: string;
   caption?: string;
+  fileName?: string;   // original filename for documents
 }
 
 export interface WhatsAppWebhookPayload {

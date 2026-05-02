@@ -70,7 +70,7 @@ export async function getHistory(sessionId: string): Promise<ChatMessage[]> {
     .order('created_at', { ascending: false })
     .limit(WINDOW_SIZE);
 
-  if (error) throw error;
+  if (error) throw new Error(`${error.message} [${error.code}]`);
   if (!data || data.length === 0) return [];
 
   // Reverse so the result is oldest → newest (chronological for the LLM)
@@ -83,7 +83,7 @@ export async function getHistory(sessionId: string): Promise<ChatMessage[]> {
 export async function addMessage(sessionId: string, message: ChatMessage): Promise<void> {
   const row = messageToRow(sessionId, message);
   const { error } = await supabase.from('conversation_messages').insert(row);
-  if (error) throw error;
+  if (error) throw new Error(`${error.message} [${error.code}]`);
 }
 
 /**
@@ -94,5 +94,5 @@ export async function clearHistory(sessionId: string): Promise<void> {
     .from('conversation_messages')
     .delete()
     .eq('wa_id', sessionId);
-  if (error) throw error;
+  if (error) throw new Error(`${error.message} [${error.code}]`);
 }

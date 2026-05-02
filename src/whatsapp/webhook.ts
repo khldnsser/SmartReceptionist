@@ -73,6 +73,7 @@ export function parseWebhookPayload(payload: WhatsAppWebhookPayload): IncomingMe
         mediaId: raw.document?.id,
         mimeType: raw.document?.mime_type,
         caption: raw.document?.caption,
+        fileName: raw.document?.filename,
       };
 
     default:

@@ -1,6 +1,4 @@
 import 'dotenv/config';
-import * as fs from 'fs';
-import * as path from 'path';
 
 function required(name: string): string {
   const val = process.env[name];
@@ -10,15 +8,6 @@ function required(name: string): string {
 
 function optional(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
-}
-
-function loadServiceAccountKey(): object {
-  const keyFile = optional('GOOGLE_SERVICE_ACCOUNT_KEY_FILE', './google-service-account.json');
-  const resolved = path.resolve(keyFile);
-  if (!fs.existsSync(resolved)) {
-    throw new Error(`Google service account key file not found: ${resolved}`);
-  }
-  return JSON.parse(fs.readFileSync(resolved, 'utf8'));
 }
 
 export const config = {
@@ -42,15 +31,8 @@ export const config = {
     serviceRoleKey: required('SUPABASE_SERVICE_ROLE_KEY'),
   },
 
-  google: {
-    get serviceAccountKey() { return loadServiceAccountKey(); },
-    calendarId: required('GOOGLE_CALENDAR_ID'),
-    gmail: {
-      clientId: required('GMAIL_CLIENT_ID'),
-      clientSecret: required('GMAIL_CLIENT_SECRET'),
-      refreshToken: required('GMAIL_REFRESH_TOKEN'),
-      sender: required('GMAIL_SENDER'),
-    },
+  notifications: {
+    internalToken: required('INTERNAL_API_TOKEN'),
   },
 
   business: {
@@ -64,5 +46,6 @@ export const config = {
     },
     minBookingLeadHours: parseInt(optional('MIN_BOOKING_LEAD_HOURS', '24')),
     slotsToOffer: parseInt(optional('SLOTS_TO_OFFER', '5')),
+    reminderLeadHours: parseInt(optional('REMINDER_LEAD_HOURS', '24')),
   },
 } as const;
