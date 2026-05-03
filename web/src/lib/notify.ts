@@ -3,7 +3,9 @@
  * Called from server actions after the doctor makes manual changes.
  * Failures are logged but never thrown — the DB change always stands.
  */
-export async function notifyPatient(waId: string, message: string): Promise<void> {
+export async function notifyPatient(waId: string | null | undefined, message: string): Promise<void> {
+  if (!waId) return;
+
   const agentUrl = process.env.AGENT_URL;
   const token = process.env.INTERNAL_API_TOKEN;
 

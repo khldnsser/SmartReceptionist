@@ -21,11 +21,11 @@ interface Props {
   clientId: string;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  booked: 'bg-blue-100 text-blue-700',
-  completed: 'bg-gray-100 text-gray-600',
-  cancelled: 'bg-red-100 text-red-600',
-  missed: 'bg-orange-100 text-orange-700',
+const STATUS_BADGE: Record<string, { cls: string }> = {
+  booked:    { cls: 'badge-blue' },
+  completed: { cls: 'badge-gray' },
+  cancelled: { cls: 'badge-red' },
+  missed:    { cls: 'badge-orange' },
 };
 
 function SummaryForm({
@@ -49,41 +49,27 @@ function SummaryForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+    <form onSubmit={handleSubmit} style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--hairline)', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <input type="hidden" name="client_id" value={clientId} />
       <input type="hidden" name="appointment_id" value={appointmentId} />
 
-      <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Diagnosis</label>
-        <textarea name="diagnosis" rows={2}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Primary diagnosis…" />
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Notes</label>
-        <textarea name="notes" rows={3}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Clinical notes…" />
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Treatment</label>
-        <textarea name="treatment" rows={2}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Prescribed treatment or medications…" />
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">Follow-up</label>
-        <textarea name="follow_up" rows={2}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Follow-up instructions…" />
-      </div>
-      <div className="flex gap-2">
-        <button type="submit" disabled={isPending}
-          className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+      {[
+        { name: 'diagnosis', rows: 2, placeholder: 'Primary diagnosis…' },
+        { name: 'notes',     rows: 3, placeholder: 'Clinical notes…' },
+        { name: 'treatment', rows: 2, placeholder: 'Prescribed treatment or medications…' },
+        { name: 'follow_up', rows: 2, placeholder: 'Follow-up instructions…' },
+      ].map(({ name, rows, placeholder }) => (
+        <div key={name}>
+          <label className="field-label">{name.replace('_', '-')}</label>
+          <textarea name={name} rows={rows} placeholder={placeholder} className="pms-input" />
+        </div>
+      ))}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="submit" disabled={isPending} className="btn-pms btn-pms-primary btn-pms-sm">
           {isPending ? 'Saving…' : 'Save summary'}
         </button>
-        <button type="button" onClick={onClose}
-          className="px-4 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+        <button type="button" onClick={onClose} className="btn-pms btn-pms-ghost btn-pms-sm">
           Cancel
         </button>
       </div>
@@ -95,47 +81,43 @@ export default function AppointmentsWithSummary({ appointments, summaries, clien
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (appointments.length === 0) {
-    return <p className="text-sm text-gray-400">No appointments yet.</p>;
+    return <p style={{ fontSize: 14, color: 'var(--ink-faint)' }}>No appointments yet.</p>;
   }
 
   return (
-    <div className="space-y-2">
-      {appointments.map((appt) => {
+    <div>
+      {appointments.map((appt, i) => {
         const hasSummary = summaries.some(s => s.appointment_id === appt.id);
         const isExpanded = expandedId === appt.id;
+        const badge = STATUS_BADGE[appt.booking_status] ?? { cls: 'badge-gray' };
+        const isLast = i === appointments.length - 1;
 
         return (
-          <div key={appt.id} className="border-b border-gray-100 last:border-0 py-2.5">
-            <div className="flex items-center justify-between">
+          <div key={appt.id} style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)', padding: '14px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <p className="text-sm text-gray-800 font-medium">
+                <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
                   {new Date(appt.appointment_date).toLocaleString('en-US', {
-                    timeZone: 'Asia/Beirut',
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
+                    timeZone: 'Asia/Beirut', weekday: 'short', month: 'short', day: 'numeric',
+                    year: 'numeric', hour: '2-digit', minute: '2-digit',
                   })}
                 </p>
                 {appt.intake_form && (
-                  <p className="text-xs text-gray-400 mt-0.5">{appt.intake_form}</p>
+                  <p style={{ fontSize: 12, color: 'var(--ink-faint)', marginTop: 2 }}>{appt.intake_form}</p>
                 )}
               </div>
-              <div className="flex items-center gap-3 shrink-0 ml-4">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[appt.booking_status] ?? 'bg-gray-100 text-gray-500'}`}>
-                  {appt.booking_status}
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 16 }}>
+                <span className={`badge ${badge.cls}`}>{appt.booking_status}</span>
                 {appt.booking_status !== 'cancelled' && (
                   hasSummary ? (
-                    <span className="text-xs text-gray-400 italic">Summary added</span>
+                    <span style={{ fontSize: 12, color: 'var(--ink-faint)', fontStyle: 'italic' }}>summary added</span>
                   ) : (
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : appt.id)}
-                      className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                      className="btn-pms btn-pms-secondary btn-pms-sm"
+                      style={{ fontSize: 12, padding: '5px 12px' }}
                     >
-                      {isExpanded ? 'Cancel' : '+ Add summary'}
+                      {isExpanded ? 'Cancel' : '+ Summary'}
                     </button>
                   )
                 )}

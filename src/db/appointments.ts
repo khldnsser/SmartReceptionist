@@ -17,6 +17,7 @@ export interface AppointmentInput {
   appointment_date: string;
   booking_status?: BookingStatus;
   intake_form?: string;
+  appointment_type?: string;
 }
 
 export interface AppointmentUpdate {

@@ -3,6 +3,7 @@ import { parseWebhookPayload } from './whatsapp/webhook';
 import { sendTextMessage, markAsRead } from './whatsapp/sender';
 import { routeMessageToText } from './media/router';
 import { runAgent } from './agent/loop';
+import { logger } from './core/logger';
 import type { WhatsAppWebhookPayload } from './whatsapp/types';
 
 const UNSUPPORTED_DOCUMENT_MSG =
@@ -13,8 +14,7 @@ const UNSUPPORTED_DOCUMENT_MSG =
  *   Webhook payload → parse → media processing → agent → WhatsApp reply
  */
 export async function handleWhatsAppMessage(req: Request, res: Response): Promise<void> {
-  console.log('[WEBHOOK] POST received at', new Date().toISOString());
-  console.log('[WEBHOOK] Body:', JSON.stringify(req.body, null, 2));
+  logger.debug({ body: req.body }, '[WEBHOOK] POST received');
 
   // Always respond 200 immediately so WhatsApp stops retrying
   res.sendStatus(200);
@@ -22,40 +22,35 @@ export async function handleWhatsAppMessage(req: Request, res: Response): Promis
   const payload = req.body as WhatsAppWebhookPayload;
   const message = parseWebhookPayload(payload);
 
-  console.log('[WEBHOOK] Parsed message:', message);
-
   // Non-message events (delivery receipts, etc.) — nothing to do
   if (!message) {
-    console.log('[WEBHOOK] No actionable message found (status update or unknown type), skipping.');
+    logger.debug('[WEBHOOK] No actionable message (status update or unknown type), skipping.');
     return;
   }
 
   const { from, messageId } = message;
-  console.log(`[WEBHOOK] Processing message from ${from}, type: ${message.type}`);
+  logger.info({ from, type: message.type }, '[WEBHOOK] Processing message');
 
   try {
     await markAsRead(messageId);
 
     // Convert the inbound message (any media type) to plain text
     const routed = await routeMessageToText(message);
-    console.log('[WEBHOOK] Routed message:', routed);
+    logger.debug({ routed }, '[WEBHOOK] Routed message');
 
     if (!routed.ok) {
       await sendTextMessage(from, UNSUPPORTED_DOCUMENT_MSG);
       return;
     }
 
-    console.log('[AGENT] Running agent for session:', from);
-
-    // Run the AI agent with the user's wa_id as the session key
+    logger.info({ from }, '[AGENT] Running agent for session');
     const agentResponse = await runAgent(from, routed.text);
-
-    console.log('[AGENT] Response:', agentResponse);
+    logger.info({ from, length: agentResponse.length }, '[AGENT] Response ready');
 
     await sendTextMessage(from, agentResponse);
-    console.log('[WEBHOOK] Reply sent to', from);
+    logger.info({ from }, '[WEBHOOK] Reply sent');
   } catch (err) {
-    console.error(`[handleWhatsAppMessage] Error for session ${from}:`, err);
+    logger.error({ from, err }, '[handleWhatsAppMessage] Error');
     try {
       await sendTextMessage(
         from,

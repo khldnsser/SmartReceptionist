@@ -8,66 +8,68 @@ export default async function LoginPage({ searchParams }: Props) {
   const { error } = await searchParams;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 w-full max-w-sm">
-        {/* Logo / title */}
-        <div className="mb-8">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mb-4">
-            <span className="text-white text-lg">🏥</span>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--parchment)' }}>
+      <div style={{ width: '100%', maxWidth: 380, padding: '0 24px' }}>
+
+        {/* Brand */}
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{
+            width: 52, height: 52, background: 'var(--nav-bg)', borderRadius: 'var(--r-md)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
+              <circle cx="18" cy="17" r="3" />
+              <path d="M15 17h-3" />
+            </svg>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900">Clinic PMS</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Practice Management System</p>
+          <h1 style={{ fontSize: 28, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.374px', lineHeight: 1.1, margin: 0 }}>Clinic PMS</h1>
+          <p style={{ fontSize: 15, color: 'var(--ink-muted)', marginTop: 6, letterSpacing: '-0.224px' }}>Practice Management System</p>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {decodeURIComponent(error)}
-          </div>
-        )}
+        {/* Card */}
+        <div className="pms-card" style={{ padding: 32 }}>
+          {error && (
+            <div className="error-msg" style={{ marginBottom: 20 }}>
+              {decodeURIComponent(error)}
+            </div>
+          )}
 
-        {/* Form */}
-        <form action={login} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="doctor@clinic.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         placeholder:text-gray-400"
-            />
-          </div>
+          <form action={login} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div>
+              <label htmlFor="email" className="field-label">Email</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="doctor@clinic.com"
+                className="pms-input"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+            <div>
+              <label htmlFor="password" className="field-label">Password</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                className="pms-input"
+              />
+            </div>
 
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium
-                       hover:bg-blue-700 active:bg-blue-800 transition-colors"
-          >
-            Sign in
-          </button>
-        </form>
+            <button
+              type="submit"
+              className="btn-pms btn-pms-primary"
+              style={{ width: '100%', justifyContent: 'center', padding: '12px 20px', marginTop: 4, fontSize: 15 }}
+            >
+              Sign in
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

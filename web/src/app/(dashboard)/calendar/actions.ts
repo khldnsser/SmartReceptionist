@@ -66,10 +66,12 @@ export async function cancelAppointmentAction(
 
 export async function createAppointmentAction(
   clientId: string,
-  waId: string,
+  waId: string | null,
   clientName: string,
   appointmentDate: string,
   intakeForm?: string,
+  appointmentType: 'initial' | 'follow_up' | 'procedure' | 'telemedicine' = 'follow_up',
+  durationMinutes = 30,
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = createAdminClient();
 
@@ -78,6 +80,8 @@ export async function createAppointmentAction(
     appointment_date: appointmentDate,
     booking_status: 'booked',
     intake_form: intakeForm ?? null,
+    appointment_type: appointmentType,
+    duration_minutes: durationMinutes,
   });
 
   if (error) return { ok: false, error: error.message };

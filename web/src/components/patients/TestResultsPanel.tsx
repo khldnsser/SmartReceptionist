@@ -2,6 +2,8 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { updateTestResult, uploadTestResult, deleteTestResult } from '@/app/actions/test-results';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import { useToast } from '@/components/Toast';
 
 interface Result {
   id: string;
@@ -12,6 +14,7 @@ interface Result {
   patient_note: string | null;
   doctor_label: string | null;
   doctor_note: string | null;
+  uploaded_via: 'whatsapp' | 'web' | null;
   created_at: string;
   signedUrl: string | null;
 }
@@ -31,14 +34,27 @@ function formatBytes(bytes: number | null) {
 function FileIcon({ mimeType }: { mimeType: string | null }) {
   if (mimeType?.startsWith('image/')) {
     return (
-      <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="1.8" strokeLinecap="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <polyline points="21 15 16 10 5 21" />
       </svg>
     );
   }
   return (
-    <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <polyline points="16 16 12 12 8 16" />
+      <line x1="12" y1="12" x2="12" y2="21" />
+      <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
     </svg>
   );
 }
@@ -47,80 +63,68 @@ function ViewerModal({ result, onClose }: { result: Result; onClose: () => void 
   const isImage = result.mime_type?.startsWith('image/');
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onClick={onClose}
-    >
+    <div className="modal-backdrop" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        style={{ background: 'var(--canvas)', borderRadius: 'var(--r-lg)', width: '100%', maxWidth: 720, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'rgba(0,0,0,0.18) 0 20px 60px' }}
+        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--hairline)', flexShrink: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {result.doctor_label ?? result.file_name ?? 'Untitled'}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p style={{ fontSize: 12, color: 'var(--ink-faint)', marginTop: 2 }}>
               {new Date(result.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               {result.file_size_bytes ? ` · ${formatBytes(result.file_size_bytes)}` : ''}
             </p>
           </div>
-          <div className="flex items-center gap-3 ml-4 shrink-0">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 16, flexShrink: 0 }}>
             {result.signedUrl && (
-              <a
-                href={result.signedUrl}
-                download={result.file_name ?? 'file'}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                onClick={(e) => e.stopPropagation()}
+              <button
+                style={{ fontSize: 13, color: 'var(--blue)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const blob = await fetch(result.signedUrl!).then(r => r.blob());
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = result.file_name ?? 'file';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
               >
                 Download
-              </a>
+              </button>
             )}
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button onClick={onClose} className="modal-close" style={{ position: 'static', width: 28, height: 28 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto bg-gray-50 flex items-center justify-center p-4">
+        <div style={{ flex: 1, overflow: 'auto', background: 'var(--parchment)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           {!result.signedUrl ? (
-            <p className="text-sm text-gray-400">File not available</p>
+            <p style={{ fontSize: 14, color: 'var(--ink-faint)' }}>File not available</p>
           ) : isImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={result.signedUrl}
-              alt={result.doctor_label ?? result.file_name ?? 'Test result'}
-              className="max-w-full max-h-[60vh] object-contain rounded-lg shadow"
-            />
+            <img src={result.signedUrl} alt={result.doctor_label ?? result.file_name ?? 'Test result'} style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain', borderRadius: 'var(--r-md)' }} />
           ) : (
-            <iframe
-              src={result.signedUrl}
-              className="w-full h-[60vh] rounded-lg border border-gray-200"
-              title={result.file_name ?? 'PDF'}
-            />
+            <iframe src={result.signedUrl} style={{ width: '100%', height: '60vh', borderRadius: 'var(--r-md)', border: '1px solid var(--hairline)' }} title={result.file_name ?? 'PDF'} />
           )}
         </div>
 
-        {/* Notes */}
         {(result.patient_note || result.doctor_note) && (
-          <div className="px-5 py-3 border-t border-gray-100 space-y-1.5">
+          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--hairline)', flexShrink: 0 }}>
             {result.patient_note && (
-              <p className="text-xs text-gray-500">
-                <span className="font-medium text-gray-400 uppercase tracking-wide">Patient: </span>
-                {result.patient_note}
+              <p style={{ fontSize: 12, color: 'var(--ink-muted)', marginBottom: 4 }}>
+                <span className="section-label" style={{ marginRight: 6 }}>Patient:</span>{result.patient_note}
               </p>
             )}
             {result.doctor_note && (
-              <p className="text-xs text-gray-700">
-                <span className="font-medium text-gray-400 uppercase tracking-wide">Doctor: </span>
-                {result.doctor_note}
+              <p style={{ fontSize: 12, color: 'var(--ink)' }}>
+                <span className="section-label" style={{ marginRight: 6 }}>Doctor:</span>{result.doctor_note}
               </p>
             )}
           </div>
@@ -133,127 +137,112 @@ function ViewerModal({ result, onClose }: { result: Result; onClose: () => void 
 function ResultCard({ result, clientId }: { result: Result; clientId: string }) {
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { addToast } = useToast();
 
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      await updateTestResult(formData);
-      setEditing(false);
+      const res = await updateTestResult(formData);
+      if (res?.ok === false) {
+        addToast(res.error ?? 'Failed to save', 'error');
+      } else {
+        addToast('Saved', 'success');
+        setEditing(false);
+      }
     });
   }
 
   function handleDelete() {
-    if (!confirm('Delete this test result? This cannot be undone.')) return;
-    startTransition(() => deleteTestResult(result.id, result.storage_path, clientId));
+    startTransition(async () => {
+      await deleteTestResult(result.id, result.storage_path, clientId);
+      addToast('Test result deleted', 'success');
+    });
   }
 
-  const date = new Date(result.created_at).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const date = new Date(result.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
     <>
       {viewing && <ViewerModal result={result} onClose={() => setViewing(false)} />}
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete test result?"
+          description="This cannot be undone."
+          confirmText="Delete"
+          variant="danger"
+          onConfirm={() => { setConfirmDelete(false); handleDelete(); }}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
 
-      <div className="border border-gray-200 rounded-xl p-4">
-        <div className="flex items-start gap-3">
+      <div style={{ border: '1px solid var(--hairline)', borderRadius: 'var(--r-md)', padding: 14, display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Thumbnail / icon */}
           <button
             onClick={() => setViewing(true)}
-            className="shrink-0 w-10 h-10 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+            style={{ width: 36, height: 36, background: 'var(--parchment)', border: '1px solid var(--hairline)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, overflow: 'hidden', padding: 0 }}
             title="View file"
           >
             {result.signedUrl && result.mime_type?.startsWith('image/') ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={result.signedUrl}
-                alt=""
-                className="w-10 h-10 object-cover rounded-lg"
-              />
+              <img src={result.signedUrl} alt="" style={{ width: 36, height: 36, objectFit: 'cover' }} />
             ) : (
               <FileIcon mimeType={result.mime_type} />
             )}
           </button>
 
           {/* Info */}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-gray-800 font-medium truncate">
-              {result.doctor_label ?? result.file_name ?? 'Untitled'}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden' }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>
+                {result.doctor_label ?? result.file_name ?? 'Untitled'}
+              </p>
+              {result.uploaded_via === 'whatsapp' && (
+                <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 'var(--r-pill)', background: 'rgba(21,128,61,0.10)', color: '#15803d', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  WhatsApp
+                </span>
+              )}
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--ink-faint)', marginTop: 1 }}>
               {date}{result.file_size_bytes ? ` · ${formatBytes(result.file_size_bytes)}` : ''}
             </p>
             {result.doctor_note && !editing && (
-              <p className="text-xs text-gray-500 mt-1 line-clamp-2">{result.doctor_note}</p>
+              <p style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 4 }}>{result.doctor_note}</p>
             )}
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setViewing(true)}
-              className="text-xs text-blue-600 hover:text-blue-700"
-            >
-              View
-            </button>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button onClick={() => setViewing(true)} className="btn-pms btn-pms-ghost btn-pms-sm">View</button>
             {!editing && (
-              <button onClick={() => setEditing(true)} className="text-xs text-gray-500 hover:text-gray-700">
-                Edit
-              </button>
+              <button onClick={() => setEditing(true)} className="btn-pms btn-pms-ghost btn-pms-sm">Edit</button>
             )}
-            <button
-              onClick={handleDelete}
-              disabled={isPending}
-              className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
-            >
-              {isPending ? '…' : 'Del'}
+            <button onClick={() => setConfirmDelete(true)} disabled={isPending} className="btn-pms btn-pms-sm" style={{ color: 'var(--red)', fontSize: 13 }}>
+              {isPending ? '…' : 'Delete'}
             </button>
           </div>
         </div>
 
         {editing && (
-          <form onSubmit={handleSave} className="mt-3 space-y-2 pt-3 border-t border-gray-100">
+          <form onSubmit={handleSave} style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--hairline)', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <input type="hidden" name="id" value={result.id} />
             <input type="hidden" name="client_id" value={clientId} />
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1">Label</label>
-              <input
-                name="doctor_label"
-                type="text"
-                defaultValue={result.doctor_label ?? ''}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g. CBC – Jan 2025"
-              />
+              <label className="field-label">Label</label>
+              <input name="doctor_label" type="text" defaultValue={result.doctor_label ?? ''} className="pms-input" placeholder="e.g. CBC – Jan 2025" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1">Doctor note</label>
-              <textarea
-                name="doctor_note"
-                defaultValue={result.doctor_note ?? ''}
-                rows={2}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Internal note…"
-              />
+              <label className="field-label">Doctor note</label>
+              <textarea name="doctor_note" defaultValue={result.doctor_note ?? ''} rows={2} className="pms-input" placeholder="Internal note…" />
             </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={isPending}
-                className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="submit" disabled={isPending} className="btn-pms btn-pms-primary btn-pms-sm">
                 {isPending ? 'Saving…' : 'Save'}
               </button>
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
-              >
-                Cancel
-              </button>
+              <button type="button" onClick={() => setEditing(false)} className="btn-pms btn-pms-ghost btn-pms-sm">Cancel</button>
             </div>
           </form>
         )}
@@ -276,47 +265,32 @@ function UploadForm({ clientId, onClose }: { clientId: string; onClose: () => vo
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4 border border-blue-100 bg-blue-50/40 rounded-xl p-4 space-y-3">
-      <p className="text-xs font-medium text-blue-700">Upload test result</p>
+    <form onSubmit={handleSubmit} style={{ marginBottom: 16, border: '1px solid rgba(0,102,204,0.2)', background: 'rgba(0,102,204,0.04)', borderRadius: 'var(--r-md)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--blue)' }}>Upload test result</p>
       <input type="hidden" name="client_id" value={clientId} />
 
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">File</label>
+        <label className="field-label">File</label>
         <input
           ref={fileRef}
           name="file"
           type="file"
           required
           accept="image/jpeg,image/png,image/gif,image/webp,image/heic,application/pdf"
-          className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"
+          style={{ display: 'block', width: '100%', fontSize: 13, color: 'var(--ink-muted)', cursor: 'pointer' }}
         />
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Label (optional)</label>
-        <input
-          name="doctor_label"
-          type="text"
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="e.g. CBC – Jan 2025"
-        />
+        <label className="field-label">Label (optional)</label>
+        <input name="doctor_label" type="text" className="pms-input" placeholder="e.g. CBC – Jan 2025" />
       </div>
 
-      <div className="flex items-center gap-2">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="submit" disabled={isPending} className="btn-pms btn-pms-primary btn-pms-sm">
           {isPending ? 'Uploading…' : 'Upload'}
         </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-1.5 text-sm text-gray-500 hover:text-gray-700"
-        >
-          Cancel
-        </button>
+        <button type="button" onClick={onClose} className="btn-pms btn-pms-ghost btn-pms-sm">Cancel</button>
       </div>
     </form>
   );
@@ -326,17 +300,14 @@ export default function TestResultsPanel({ results, clientId }: Props) {
   const [uploading, setUploading] = useState(false);
 
   return (
-    <section className="bg-white rounded-xl border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-700">Test results</h2>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400">{results.length} total</span>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.224px' }}>Test results</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{results.length} total</span>
           {!uploading && (
-            <button
-              onClick={() => setUploading(true)}
-              className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              + Upload
+            <button onClick={() => setUploading(true)} className="btn-pms btn-pms-secondary btn-pms-sm" style={{ gap: 5 }}>
+              <UploadIcon /> Upload
             </button>
           )}
         </div>
@@ -345,14 +316,16 @@ export default function TestResultsPanel({ results, clientId }: Props) {
       {uploading && <UploadForm clientId={clientId} onClose={() => setUploading(false)} />}
 
       {results.length === 0 && !uploading ? (
-        <p className="text-sm text-gray-400">No test results yet. Click &quot;+ Upload&quot; to add one.</p>
+        <div className="pms-card">
+          <p style={{ fontSize: 14, color: 'var(--ink-faint)' }}>No test results yet.</p>
+        </div>
       ) : (
-        <div className="space-y-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {results.map((r) => (
             <ResultCard key={r.id} result={r} clientId={clientId} />
           ))}
         </div>
       )}
-    </section>
+    </div>
   );
 }

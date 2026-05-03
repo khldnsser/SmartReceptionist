@@ -2,6 +2,7 @@
 const nextConfig = {
   experimental: {
     serverActions: { allowedOrigins: ['localhost:3001'] },
+    serverComponentsExternalPackages: ['@react-pdf/renderer'],
   },
 };
 

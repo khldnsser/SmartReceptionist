@@ -9,12 +9,29 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          600: '#2563eb',
-          700: '#1d4ed8',
+        clinic: {
+          blue:      '#0066cc',
+          'blue-hover': '#0055aa',
+          ink:       '#1d1d1f',
+          muted:     '#6e6e73',
+          faint:     '#aeaeb2',
+          canvas:    '#ffffff',
+          parchment: '#f5f5f7',
+          hairline:  '#e0e0e0',
+          nav:       '#1d1d1f',
+          red:       '#d93025',
+          orange:    '#ea580c',
+          green:     '#30d158',
         },
+      },
+      borderRadius: {
+        'r-sm': '8px',
+        'r-md': '11px',
+        'r-lg': '18px',
+        'r-pill': '9999px',
+      },
+      fontFamily: {
+        sans: ['"Inter"', '"SF Pro Text"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
     },
   },

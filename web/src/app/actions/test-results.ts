@@ -10,12 +10,14 @@ export async function updateTestResult(formData: FormData) {
   const doctorLabel = (formData.get('doctor_label') as string) || null;
   const doctorNote = (formData.get('doctor_note') as string) || null;
 
-  await admin
+  const { error } = await admin
     .from('test_results')
     .update({ doctor_label: doctorLabel, doctor_note: doctorNote })
     .eq('id', id);
 
+  if (error) return { ok: false as const, error: error.message };
   revalidatePath(`/patients/${clientId}`);
+  return { ok: true as const };
 }
 
 export async function uploadTestResult(formData: FormData) {

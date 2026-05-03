@@ -12,6 +12,14 @@ interface Client {
   medical_history: string | null;
 }
 
+function CheckIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 export default function ProfileEditor({ client }: { client: Client }) {
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -46,73 +54,49 @@ export default function ProfileEditor({ client }: { client: Client }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Full name</label>
-          <input
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <label className="field-label">Full name</label>
+          <input name="name" value={form.name} onChange={handleChange} className="pms-input" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
-          <input
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <label className="field-label">Email</label>
+          <input name="email" type="email" value={form.email} onChange={handleChange} className="pms-input" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
-          <input
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <label className="field-label">Phone</label>
+          <input name="phone" value={form.phone} onChange={handleChange} className="pms-input" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Age</label>
-          <input
-            name="age"
-            type="number"
-            min="0"
-            max="150"
-            value={form.age}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <label className="field-label">Age</label>
+          <input name="age" type="number" min="0" max="150" value={form.age} onChange={handleChange} className="pms-input" />
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Medical history & notes</label>
+        <label className="field-label">Medical history & notes</label>
         <textarea
           name="medical_history"
           rows={5}
           value={form.medical_history}
           onChange={handleChange}
           placeholder="Conditions, allergies, medications, notes…"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="pms-input"
         />
       </div>
 
-      {err && <p className="text-sm text-red-600">{err}</p>}
+      {err && <div className="error-msg">{err}</div>}
 
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-        >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button type="submit" disabled={isPending} className="btn-pms btn-pms-primary btn-pms-sm">
           {isPending ? 'Saving…' : 'Save changes'}
         </button>
-        {saved && <span className="text-sm text-green-600">✓ Saved</span>}
+        {saved && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, color: '#15803d' }}>
+            <CheckIcon /> Saved
+          </span>
+        )}
       </div>
     </form>
   );

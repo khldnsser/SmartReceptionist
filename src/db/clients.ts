@@ -42,9 +42,31 @@ export async function getClientByEmail(email: string): Promise<Client | null> {
 
 /**
  * Creates or updates the client row for the given wa_id.
- * Only the fields provided are written — existing fields are preserved.
+ * If no wa_id match exists but a manually-created client (wa_id IS NULL) has the same phone,
+ * that row is linked instead of creating a duplicate.
  */
 export async function upsertClient(waId: string, fields: ClientFields): Promise<Client> {
+  // Phone-based fallback: link manually-created patients when they first message WhatsApp
+  if (fields.phone) {
+    const { data: existing } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('phone', fields.phone)
+      .is('wa_id', null)
+      .maybeSingle();
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('clients')
+        .update({ wa_id: waId, ...fields })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw new Error(`${error.message} [${error.code}]`);
+      return data;
+    }
+  }
+
   const { data, error } = await supabase
     .from('clients')
     .upsert({ wa_id: waId, ...fields }, { onConflict: 'wa_id' })

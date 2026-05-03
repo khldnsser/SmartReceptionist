@@ -43,6 +43,11 @@ export const definitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             type: 'string',
             description: 'Topics or issues the patient wants to discuss.',
           },
+          appointment_type: {
+            type: 'string',
+            enum: ['initial', 'follow_up', 'procedure', 'telemedicine'],
+            description: 'Type of appointment. Defaults to follow_up if not specified by the patient.',
+          },
         },
         required: ['appointment_date'],
       },
@@ -128,6 +133,7 @@ export async function execute(waId: string, name: string, args: Args): Promise<s
       const appt = await db.createAppointment(client.id, {
         appointment_date: args.appointment_date as string,
         intake_form: args.intake_form as string | undefined,
+        appointment_type: (args.appointment_type as string | undefined) ?? 'follow_up',
       });
       return JSON.stringify(appt);
     }

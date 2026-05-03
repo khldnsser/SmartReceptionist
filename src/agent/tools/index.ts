@@ -2,15 +2,17 @@ import type OpenAI from 'openai';
 import * as clientTools from './clients';
 import * as appointmentTools from './appointments';
 import * as testResultTools from './test_results';
-import * as visitSummaryTools from './visit_summaries';
+import * as clinicalTools from './clinical';
 import * as notificationTools from './notifications';
 
-// Aggregated tool definitions sent to the LLM
+// Aggregated tool definitions sent to the LLM.
+// NOTE: visit_summaries tools are intentionally excluded — all visit summary
+// content is doctor-only per src/agent/privacy.ts.
 export const TOOL_DEFINITIONS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   ...clientTools.definitions,
   ...appointmentTools.definitions,
   ...testResultTools.definitions,
-  ...visitSummaryTools.definitions,
+  ...clinicalTools.definitions,
   ...notificationTools.definitions,
 ];
 
@@ -25,8 +27,12 @@ const TOOL_MODULES: Record<string, (waId: string, name: string, args: Record<str
   reschedule_appointment:       appointmentTools.execute,
   cancel_appointment:           appointmentTools.execute,
   list_test_results_for_client: testResultTools.execute,
-  get_latest_visit_summary:     visitSummaryTools.execute,
-  list_visit_summaries_for_client: visitSummaryTools.execute,
+  get_my_allergies:             clinicalTools.execute,
+  get_my_medications:           clinicalTools.execute,
+  get_my_problems:              clinicalTools.execute,
+  get_my_family_history:        clinicalTools.execute,
+  get_my_social_history:        clinicalTools.execute,
+  get_my_test_results_list:     clinicalTools.execute,
   send_whatsapp_confirmation:   notificationTools.execute,
 };
 
@@ -46,7 +52,6 @@ export async function executeTool(
   try {
     return await handler(waId, name, args);
   } catch (err) {
-    // Supabase throws PostgrestError objects (not Error instances) — extract .message explicitly
     const message =
       err instanceof Error
         ? err.message

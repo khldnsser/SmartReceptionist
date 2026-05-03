@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
+import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { EventClickArg, EventDropArg, DateSelectArg } from '@fullcalendar/core';
 import EventModal, { type CalendarEventProps } from './EventModal';
@@ -21,9 +22,11 @@ interface FCEvent {
   extendedProps: {
     status: 'booked' | 'completed' | 'cancelled' | 'missed';
     intakeForm: string | null;
+    appointmentType: string;
+    durationMinutes: number;
     clientName: string;
     clientId: string;
-    waId: string;
+    waId: string | null;
     email: string | null;
   };
 }
@@ -31,7 +34,7 @@ interface FCEvent {
 interface Client {
   id: string;
   name: string | null;
-  wa_id: string;
+  wa_id: string | null;
   email: string | null;
 }
 
@@ -55,6 +58,8 @@ export default function CalendarView({ events, clients }: Props) {
       end: event.endStr,
       status: event.extendedProps.status,
       intakeForm: event.extendedProps.intakeForm,
+      appointmentType: event.extendedProps.appointmentType,
+      durationMinutes: event.extendedProps.durationMinutes,
       clientName: event.extendedProps.clientName,
       clientId: event.extendedProps.clientId,
       waId: event.extendedProps.waId,
@@ -87,14 +92,14 @@ export default function CalendarView({ events, clients }: Props) {
     <>
       <div className="fc-wrapper">
         <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
+          plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+          initialView={typeof window !== 'undefined' && window.innerWidth < 768 ? 'listWeek' : 'timeGridWeek'}
           timeZone="Asia/Beirut"
           firstDay={1}
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay',
+            right: 'dayGridMonth,timeGridWeek,listWeek',
           }}
           height="100%"
           allDaySlot={false}
@@ -114,7 +119,7 @@ export default function CalendarView({ events, clients }: Props) {
           eventDrop={handleEventDrop}
           select={handleDateSelect}
           eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
-          buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }}
+          buttonText={{ today: 'Today', month: 'Month', week: 'Week', list: 'List' }}
         />
       </div>
 
