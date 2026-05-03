@@ -1,6 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import CalendarView from '@/components/calendar/CalendarView';
+import CalendarView from '@/features/calendar/CalendarView';
 import RealtimeRefresher from '@/components/RealtimeRefresher';
 
 const TYPE_COLORS: Record<string, string> = {

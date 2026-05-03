@@ -4,17 +4,14 @@ import { transcribeAudio } from './audio';
 import { analyzeImage } from './image';
 import { extractDocument } from './document';
 import { uploadMediaToStorage } from './storage';
-import { createTestResultForWaId } from '../db/test_results';
+import { createTestResultForWaId } from '../repositories/test-result.repo';
 import { getHistory } from '../agent/memory';
+import { logger } from '../core/logger';
 
 export type RoutedMessage =
   | { ok: true; text: string }
   | { ok: false; reason: 'unsupported_document' };
 
-/**
- * Returns the last 4 user/assistant messages as a plain text string for LLM context.
- * Silently returns undefined on error so it never blocks the image upload flow.
- */
 async function buildRecentContext(waId: string): Promise<string | undefined> {
   try {
     const history = await getHistory(waId);
@@ -29,7 +26,6 @@ async function buildRecentContext(waId: string): Promise<string | undefined> {
   }
 }
 
-/** MIME types that are saved as test results in Supabase Storage. */
 const TEST_RESULT_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -43,11 +39,6 @@ function isTestResultMedia(mimeType: string): boolean {
   return TEST_RESULT_MIME_TYPES.has(mimeType);
 }
 
-/**
- * Uploads media to Supabase Storage and persists a test_results row.
- * Failures are caught and logged so they never break the message pipeline.
- * Returns a human-readable status string injected into the agent's context.
- */
 async function persistMediaAsTestResult(
   waId: string,
   buffer: Buffer,
@@ -67,15 +58,11 @@ async function persistMediaAsTestResult(
     });
     return `[Test result uploaded to patient records. File: ${fileName} (${mimeType}). Patient note: "${caption ?? 'none'}". Storage path: ${storagePath}]`;
   } catch (err) {
-    console.error('[MEDIA ROUTER] Storage/DB failed:', err);
+    logger.error({ err }, '[MEDIA ROUTER] Storage/DB failed');
     return `[Media upload failed. Patient sent ${mimeType} file "${fileName}". Patient note: "${caption ?? 'none'}". Error: ${err instanceof Error ? err.message : String(err)}]`;
   }
 }
 
-/**
- * Converts any IncomingMessage into plain text for the agent.
- * Images and PDFs are also persisted to Supabase Storage as test results.
- */
 export async function routeMessageToText(message: IncomingMessage): Promise<RoutedMessage> {
   switch (message.type) {
     case 'text':

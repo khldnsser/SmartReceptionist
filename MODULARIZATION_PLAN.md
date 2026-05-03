@@ -10,15 +10,15 @@ Restructure the agent server (repo root) and PMS (`web/`) to follow professional
 ## Progress
 
 - [x] **Phase 1 — Foundation layer** ✅ DONE
-- [ ] **Phase 2 — Infrastructure layer**
-- [ ] **Phase 3 — Repository layer**
-- [ ] **Phase 4 — Domain layer**
-- [ ] **Phase 5 — Service layer**
-- [ ] **Phase 6 — Agent reorganization**
-- [ ] **Phase 7 — HTTP layer**
-- [ ] **Phase 8 — Jobs layer**
-- [ ] **Phase 9 — Web app feature modules**
-- [ ] **Phase 10 — CLAUDE.md files**
+- [x] **Phase 2 — Infrastructure layer** ✅ DONE
+- [x] **Phase 3 — Repository layer** ✅ DONE
+- [x] **Phase 4 — Domain layer** ✅ DONE
+- [x] **Phase 5 — Service layer** ✅ DONE
+- [x] **Phase 6 — Agent reorganization** ✅ DONE
+- [x] **Phase 7 — HTTP layer** ✅ DONE
+- [x] **Phase 8 — Jobs layer** ✅ DONE
+- [x] **Phase 9 — Web app feature modules** ✅ DONE
+- [x] **Phase 10 — CLAUDE.md files** ✅ DONE
 
 ---
 
@@ -35,248 +35,129 @@ Restructure the agent server (repo root) and PMS (`web/`) to follow professional
 
 ---
 
-## Phase 2 — Infrastructure Layer
+## Phase 2 — Infrastructure Layer ✅ DONE
 
-**Goal:** Extract all third-party I/O clients into `src/infra/`. Each subfolder owns one external dependency.
-
-**Target structure:**
-```
-src/infra/
-├── supabase/
-│   └── client.ts      (move from src/db/client.ts — re-export from db/client.ts for compat)
-├── openai/
-│   └── client.ts      (singleton OpenAI client, reads from core/config)
-└── whatsapp/
-    └── client.ts      (re-export or thin wrapper around whatsapp/sender.ts + media.ts)
-```
-
-**Steps:**
-1. Create `src/infra/supabase/client.ts` — move the singleton `createClient()` from `src/db/client.ts`. Keep `src/db/client.ts` as a re-export shim.
-2. Create `src/infra/openai/client.ts` — extract the `new OpenAI({ apiKey })` instantiation from wherever it currently lives (agent loop, audio, image). Single shared instance.
-3. Create `src/infra/whatsapp/client.ts` — thin namespace re-exporting `sendTextMessage`, `markAsRead`, `downloadMedia`.
-4. `tsc --noEmit` must stay clean.
-
-**Key constraint:** No business logic enters `infra/`. These are pure adapters.
+**What was done:**
+- Created `src/infra/supabase/client.ts` — Supabase singleton (moved from `src/db/client.ts`).
+- Created `src/infra/openai/client.ts` — shared OpenAI singleton; `src/agent/loop.ts`, `src/media/audio.ts`, `src/media/image.ts` all replaced their local `new OpenAI(...)` instances with this import.
+- Created `src/infra/whatsapp/client.ts` — thin re-export namespace for `sendTextMessage`, `markAsRead`, `downloadMedia`, `getMediaInfo`.
+- `src/db/client.ts` → re-export shim → `src/infra/supabase/client`.
+- `src/media/storage.ts` updated to import supabase from `src/infra/supabase/client`.
 
 ---
 
-## Phase 3 — Repository Layer
+## Phase 3 — Repository Layer ✅ DONE
 
-**Goal:** Rename `src/db/` → `src/repositories/` and adopt `.repo.ts` naming convention. Each file owns one table/domain.
-
-**Rename map:**
-```
-src/db/clients.ts          → src/repositories/client.repo.ts
-src/db/appointments.ts     → src/repositories/appointment.repo.ts
-src/db/clinical.ts         → src/repositories/clinical.repo.ts
-src/db/test_results.ts     → src/repositories/test-result.repo.ts
-src/db/visit_summaries.ts  → src/repositories/visit-summary.repo.ts
-src/db/client.ts           → stays as src/db/client.ts (infra shim, not a repo)
-```
-
-**Steps:**
-1. Create each `.repo.ts` file by moving the contents.
-2. Add a barrel `src/repositories/index.ts` that re-exports everything.
-3. Update all imports across `src/agent/tools/`, `src/scheduler/`, `src/app.ts`, `src/server.ts`.
-4. Keep `src/db/` with re-export shims for any imports not yet migrated.
-5. `tsc --noEmit` clean.
+**What was done:**
+- Created `src/repositories/` with five `.repo.ts` files: `client.repo.ts`, `appointment.repo.ts`, `clinical.repo.ts`, `test-result.repo.ts`, `visit-summary.repo.ts`.
+- Created `src/repositories/index.ts` — barrel re-exporting all five repos.
+- All five `src/db/*.ts` files converted to re-export shims pointing at the corresponding repo files.
+- Updated callers: `src/agent/tools/`, `src/scheduler/reminders.ts`, `src/scheduler/missed.ts`, `src/agent/memory.ts`, `src/media/router.ts`.
+- `src/repositories/test-result.repo.ts` — replaced `console.warn` with `logger.warn`.
 
 ---
 
-## Phase 4 — Domain Layer
+## Phase 4 — Domain Layer ✅ DONE
 
-**Goal:** Pure business logic with no I/O. Two things move here.
-
-**Target structure:**
-```
-src/domain/
-├── booking/
-│   └── availability.ts    (move from src/tools/availability.ts)
-└── privacy/
-    └── policy.ts          (move from src/agent/privacy.ts)
-```
-
-**Steps:**
-1. Move `src/tools/availability.ts` → `src/domain/booking/availability.ts`. Delete `src/tools/` folder.
-2. Move `src/agent/privacy.ts` → `src/domain/privacy/policy.ts`. Update the import in `src/agent/tools/index.ts`.
-3. Update all callers of `availability.ts` (currently `src/agent/tools/appointments.ts` and `src/scheduler/reminders.ts`).
-4. `tsc --noEmit` clean.
-
-**Key constraint:** No Supabase, no OpenAI, no HTTP in `domain/`. Pure TypeScript functions only.
+**What was done:**
+- Created `src/domain/booking/availability.ts` — pure slot-calculator logic (moved from `src/tools/availability.ts`). Imports from `src/core/config` directly.
+- Created `src/domain/privacy/policy.ts` — `PRIVACY_POLICY` const documenting patient-facing vs doctor-only fields (moved from `src/agent/privacy.ts`).
+- `src/tools/availability.ts` → re-export shim → `src/domain/booking/availability`.
+- `src/agent/privacy.ts` → re-export shim → `src/domain/privacy/policy`.
+- `src/agent/tools/appointments.ts` updated to import availability from domain layer (now delegates to booking service in Phase 5).
 
 ---
 
-## Phase 5 — Service Layer
+## Phase 5 — Service Layer ✅ DONE
 
-**Goal:** Orchestration layer. Services compose repositories + infra to implement use-cases. No Express in here.
-
-**Target structure:**
-```
-src/services/
-├── booking.service.ts       (slot availability, create/reschedule/cancel appointment)
-├── client.service.ts        (upsert/update/link patient)
-├── messaging.service.ts     (send WhatsApp message + log to conversation_messages)
-└── media-ingestion.service.ts  (route inbound media → extract text → save to storage)
-```
-
-**Steps:**
-1. Extract booking logic from `src/agent/tools/appointments.ts` into `booking.service.ts`. Tool wrappers become thin callers.
-2. Extract client upsert/update from `src/agent/tools/clients.ts` + `src/db/clients.ts` into `client.service.ts`.
-3. Extract WhatsApp send + conversation log from `src/server.ts` (`/internal/send-message`) and `src/app.ts` into `messaging.service.ts`. Wire `src/notifications/send.ts` in here (consolidates the parallel notifications folder).
-4. Extract media routing from `src/app.ts` + `src/media/router.ts` into `media-ingestion.service.ts`.
-5. `tsc --noEmit` clean.
+**What was done:**
+- Created `src/services/booking.service.ts` — all booking business logic extracted from `src/agent/tools/appointments.ts`: `getAvailableSlots`, `bookAppointment`, `listClientAppointments`, `rescheduleClientAppointment`, `cancelClientAppointment`. Owns client-existence checks, slot-conflict checks, appointment-ownership verification.
+- Created `src/services/client.service.ts` — thin delegation layer over `client.repo.ts`: `getClient`, `upsertClient`, `updateClient`.
+- Created `src/services/messaging.service.ts` — consolidates `src/notifications/send.ts` and the inline `sendAndLog` pattern from `src/server.ts`. All WhatsApp sends + conversation log writes go through here.
+- Created `src/services/media-ingestion.service.ts` — thin re-export of `src/media/router.ts` for service-layer consumers.
+- `src/agent/tools/appointments.ts` → thin wrapper: tool definitions + calls to `booking.service`.
+- `src/agent/tools/clients.ts` → thin wrapper: tool definitions + calls to `client.service`.
+- `src/notifications/send.ts` → re-export shim → `src/services/messaging.service`.
+- `src/scheduler/reminders.ts` updated to import `sendReminderNotification` from `src/services/messaging.service` (replaced `notifications/send` import).
 
 ---
 
-## Phase 6 — Agent Reorganization
+## Phase 6 — Agent Reorganization ✅ DONE
 
-**Goal:** The agent folder becomes lean. Split the monolithic system prompt. Add a `guardrails/` layer.
-
-**Target structure:**
-```
-src/agent/
-├── loop.ts              (unchanged — orchestrates LLM calls)
-├── memory.ts            (unchanged)
-├── prompt/
-│   ├── index.ts         (buildSystemPrompt() — assembles sections)
-│   ├── sections/
-│   │   ├── identity.ts       (who the agent is + core rules)
-│   │   ├── tools-ref.ts      (tools reference table)
-│   │   ├── flows.ts          (booking/reschedule/cancel/query flows A–J)
-│   │   └── business-rules.ts (hours, timezone, duration)
-├── guardrails/
-│   ├── index.ts         (runGuardrails(input) → pass | block | redirect)
-│   ├── out-of-scope.ts  (medical advice, billing, other patients)
-│   └── privacy.ts       (moved from src/domain/privacy — agent-specific enforcement)
-└── tools/               (unchanged structure, thinner implementations via services)
-```
-
-**Steps:**
-1. Split `src/agent/prompt.ts` into prompt sections. `buildSystemPrompt()` assembles them.
-2. Create `src/agent/guardrails/out-of-scope.ts` — regex/keyword checks that short-circuit before LLM call for obvious out-of-scope inputs (emergencies, billing, etc.).
-3. Wire guardrails into `src/agent/loop.ts` as a pre-LLM check.
-4. Tool implementations delegate to services (Phase 5) rather than calling repositories directly.
-5. `tsc --noEmit` clean.
+**What was done:**
+- Split `src/agent/prompt.ts` into a modular prompt directory:
+  - `src/agent/prompt/sections/identity.ts` — `IDENTITY_OPENING` + `CORE_RULES_SECTION`
+  - `src/agent/prompt/sections/tools-ref.ts` — `TOOLS_REF_SECTION`
+  - `src/agent/prompt/sections/flows.ts` — `FLOWS_SECTION` (conversation flows A–J)
+  - `src/agent/prompt/sections/business-rules.ts` — `BUSINESS_RULES_SECTION`
+  - `src/agent/prompt/index.ts` — `buildSystemPrompt()` assembles sections + injects live Beirut datetime
+- `src/agent/prompt.ts` → re-export shim → `src/agent/prompt/index`.
+- Created `src/agent/guardrails/`:
+  - `out-of-scope.ts` — `checkOutOfScope()`: regex-based emergency detection, short-circuits before LLM call
+  - `privacy.ts` — re-exports `PRIVACY_POLICY` from `src/domain/privacy/policy`
+  - `index.ts` — `runGuardrails(input): GuardrailResult` (`pass` | `block`)
+- `src/agent/loop.ts` updated: calls `runGuardrails()` before every LLM invocation; returns canned response immediately on `block`.
 
 ---
 
-## Phase 7 — HTTP Layer
+## Phase 7 — HTTP Layer ✅ DONE
 
-**Goal:** Express route handlers are thin — no business logic. Extract middleware.
-
-**Target structure:**
-```
-src/http/
-├── routes/
-│   ├── webhook.ts       (GET /webhook, POST /webhook)
-│   ├── internal.ts      (POST /internal/notify, POST /internal/send-message)
-│   └── health.ts        (GET /health)
-├── middleware/
-│   ├── auth.ts          (internal token check — extracted from route handlers)
-│   └── error-handler.ts (Express error boundary using AppError from core/errors)
-└── index.ts             (assembles app, mounts routes)
-```
-
-**Steps:**
-1. Move route handlers from `src/server.ts` into `src/http/routes/`.
-2. Extract `x-internal-token` check into `src/http/middleware/auth.ts`.
-3. Add Express error handler middleware using `AppError.statusCode`.
-4. `src/server.ts` becomes 10 lines: import `app` from `src/http/index.ts`, call `app.listen`.
-5. `tsc --noEmit` clean.
+**What was done:**
+- Created `src/http/middleware/auth.ts` — `requireInternalToken` middleware (extracted from inline route checks in `src/server.ts`).
+- Created `src/http/middleware/error-handler.ts` — Express error boundary using `AppError.statusCode` from `src/core/errors`.
+- Created `src/http/routes/health.ts` — `GET /health`
+- Created `src/http/routes/internal.ts` — `POST /internal/notify` + `POST /internal/send-message`, protected by `requireInternalToken`, uses `messaging.service`.
+- Created `src/http/routes/webhook.ts` — `GET /webhook` (verification) + `POST /webhook` (message handler).
+- Created `src/http/index.ts` — assembles Express app, mounts all routers + error handler.
+- `src/server.ts` reduced to ~10 lines: imports `app` from `src/http/index`, starts listen, starts scheduler.
 
 ---
 
-## Phase 8 — Jobs Layer
+## Phase 8 — Jobs Layer ✅ DONE
 
-**Goal:** Rename `src/scheduler/` → `src/jobs/` for clarity. Each job is self-contained.
-
-**Target structure:**
-```
-src/jobs/
-├── index.ts             (start all jobs — replaces src/scheduler/index.ts)
-├── appointment-reminders.job.ts   (every 5 min — replaces reminders.ts)
-└── mark-missed.job.ts             (daily midnight Beirut — replaces missed.ts)
-```
-
-**Steps:**
-1. Rename/move files with `.job.ts` suffix.
-2. Update `src/server.ts` import from `src/scheduler` → `src/jobs`.
-3. `tsc --noEmit` clean.
+**What was done:**
+- Created `src/jobs/appointment-reminders.job.ts` — daily reminder job (migrated from `src/scheduler/reminders.ts`; uses `logger` throughout, imports from repositories + messaging service).
+- Created `src/jobs/mark-missed.job.ts` — midnight missed-appointment sweep (migrated from `src/scheduler/missed.ts`; uses `logger`, imports supabase from `src/infra/supabase/client`).
+- Created `src/jobs/index.ts` — `startScheduler()` wired to both jobs; all `console.*` replaced with `logger.*`.
+- `src/scheduler/index.ts` → re-export shim → `src/jobs/index`.
+- `src/server.ts` updated to import `startScheduler` from `src/jobs/index`.
+- `tsc --noEmit` confirmed clean after all phases.
 
 ---
 
-## Phase 9 — Web App Feature Modules
+## Phase 9 — Web App Feature Modules ✅ DONE
 
-**Goal:** Co-locate server actions with their UI components. Thin `app/` pages.
-
-**Current structure problem:** All server actions live in `app/actions/` or `(dashboard)/*/actions.ts`, disconnected from the components that use them.
-
-**Target structure:**
-```
-web/src/
-├── features/
-│   ├── calendar/
-│   │   ├── actions.ts          (moved from app/(dashboard)/calendar/actions.ts)
-│   │   ├── CalendarView.tsx
-│   │   ├── CreateEventModal.tsx
-│   │   └── EventModal.tsx
-│   ├── patients/
-│   │   ├── actions.ts          (merged from app/(dashboard)/patients/actions.ts)
-│   │   ├── PatientSearch.tsx
-│   │   ├── ProfileEditor.tsx
-│   │   ├── NewPatientButton.tsx
-│   │   └── MessagePatientButton.tsx
-│   ├── visit-summaries/
-│   │   ├── actions.ts          (moved from app/actions/visit-summaries.ts)
-│   │   └── VisitSummaryPanel.tsx
-│   ├── test-results/
-│   │   ├── actions.ts          (moved from app/actions/test-results.ts)
-│   │   └── TestResultsPanel.tsx
-│   └── medical-record/
-│       ├── MedicalRecordPanel.tsx
-│       ├── VitalSignsPanel.tsx
-│       ├── AppointmentsWithSummary.tsx
-│       └── TimelinePanel.tsx
-├── app/
-│   └── (dashboard)/
-│       ├── calendar/page.tsx   (imports from features/calendar — thin)
-│       ├── patients/
-│       │   ├── page.tsx        (imports from features/patients — thin)
-│       │   └── [id]/page.tsx   (imports from features/* — thin)
-│       └── settings/page.tsx
-└── core/
-    └── (shared: RealtimeRefresher, ConfirmDialog, Toast, layout components)
-```
-
-**Steps:**
-1. Create `web/src/features/` with subdirectories.
-2. Move components + co-locate their actions.
-3. Update `app/` page imports.
-4. Verify `next build` clean.
+**What was done:**
+- Created `web/src/features/` with five subdirectories: `calendar/`, `patients/`, `visit-summaries/`, `test-results/`, `medical-record/`.
+- Moved all 13 UI components from `web/src/components/calendar/` and `web/src/components/patients/` into their canonical feature directories.
+- Created canonical action files co-located with components (`features/*/actions.ts` and `features/medical-record/vital-signs.actions.ts`). Key fix: `waId: string | null` (not `string`) on reschedule/cancel actions to match component call sites.
+- Converted 6 old action files (`app/actions/` + `(dashboard)/*/actions.ts`) to 2-line `'use server'; export * from '@/features/...'` shims.
+- Converted 13 old component files (`components/calendar/` + `components/patients/`) to `export { default } from '@/features/...'` shims (with named type re-exports where needed).
+- Updated 3 `app/` page files to import directly from `@/features/...` (thin pages, no business logic).
+- `next build` confirmed clean: all 11 routes generated, zero TypeScript errors.
 
 ---
 
-## Phase 10 — CLAUDE.md Files
+## Phase 10 — CLAUDE.md Files ✅ DONE
 
-**Goal:** Every major directory gets a CLAUDE.md so any new Claude session understands the module's purpose, constraints, and patterns without reading all the code.
+**What was done:**
+- Created CLAUDE.md files for every major source directory in both repos.
 
-**Files to create/update:**
-
-| File | Content |
+| File | Status |
 |---|---|
-| `/CLAUDE.md` | ✅ Done in Phase 1 — root overview, full architecture, all tools, env vars, migrations |
-| `src/core/CLAUDE.md` | Zod config shape, logger usage (never use console.*), error class hierarchy |
-| `src/infra/CLAUDE.md` | Singleton pattern, how to add a new infra client, never put business logic here |
-| `src/repositories/CLAUDE.md` | One file per table, naming convention, privacy-filtered queries for clinical |
-| `src/domain/CLAUDE.md` | Pure functions only, no I/O, how availability.ts works (slot logic) |
-| `src/services/CLAUDE.md` | Service pattern, what each service owns, how they compose repos + infra |
-| `src/agent/CLAUDE.md` | Agentic loop mechanics, sliding window memory, tool dispatch, guardrails |
-| `src/agent/tools/CLAUDE.md` | Tool definition format, how executeTool routes, privacy boundary |
-| `src/agent/guardrails/CLAUDE.md` | What guardrails check, how to add a new rule |
-| `src/http/CLAUDE.md` | Route structure, auth middleware, error handler |
-| `src/jobs/CLAUDE.md` | Cron schedule, what each job does, timezone handling |
-| `web/CLAUDE.md` | ✅ Already exists — PMS overview, auth flow, component patterns |
-| `web/src/features/CLAUDE.md` | Feature module pattern, action co-location rule |
+| `/CLAUDE.md` | ✅ Done in Phase 1 |
+| `src/core/CLAUDE.md` | ✅ Created — config shape, logger rules, error hierarchy |
+| `src/infra/CLAUDE.md` | ✅ Created — singleton pattern, no-business-logic rule |
+| `src/repositories/CLAUDE.md` | ✅ Created — one-file-per-table, privacy constraint, naming |
+| `src/domain/CLAUDE.md` | ✅ Created — pure functions only, slot logic |
+| `src/services/CLAUDE.md` | ✅ Created — service pattern, ownership, composition |
+| `src/agent/CLAUDE.md` | ✅ Created — loop mechanics, memory, prompt sections |
+| `src/agent/tools/CLAUDE.md` | ✅ Created — tool format, thin-wrapper rule, privacy boundary |
+| `src/agent/guardrails/CLAUDE.md` | ✅ Created — current checks, how to add a new guardrail |
+| `src/http/CLAUDE.md` | ✅ Created — route structure, auth middleware, error handler |
+| `src/jobs/CLAUDE.md` | ✅ Created — cron schedule (UTC vs Beirut), job descriptions |
+| `web/CLAUDE.md` | ✅ Already existed — PMS overview, auth flow, component patterns |
+| `web/src/features/CLAUDE.md` | ✅ Created — feature module pattern, co-location rule, cross-feature imports |
 
 ---
 

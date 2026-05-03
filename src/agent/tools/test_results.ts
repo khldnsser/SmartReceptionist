@@ -1,6 +1,6 @@
 import type OpenAI from 'openai';
-import * as clientsDb from '../../db/clients';
-import * as testResultsDb from '../../db/test_results';
+import * as clientsRepo from '../../repositories/client.repo';
+import * as testResultsRepo from '../../repositories/test-result.repo';
 
 export const definitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -19,10 +19,9 @@ type Args = Record<string, unknown>;
 export async function execute(waId: string, name: string, _args: Args): Promise<string> {
   switch (name) {
     case 'list_test_results_for_client': {
-      const client = await clientsDb.getClientByWaId(waId);
+      const client = await clientsRepo.getClientByWaId(waId);
       if (!client) return JSON.stringify([]);
-      const results = await testResultsDb.listTestResults(client.id);
-      // Return only the fields the agent needs — omit storage_path for privacy
+      const results = await testResultsRepo.listTestResults(client.id);
       const summary = results.map((r) => ({
         id: r.id,
         file_name: r.file_name,

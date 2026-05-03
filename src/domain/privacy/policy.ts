@@ -1,0 +1,25 @@
+export const PRIVACY_POLICY = {
+  patientFacing: [
+    'clients: name, phone, email, age',
+    'client_allergies: substance, reaction',
+    'client_medications (active): drug_name, dose, frequency',
+    'client_problems (active): problem',
+    'client_family_history: relation, condition',
+    'client_social_history: smoking_status, alcohol_status, drug_use_status, occupation, living_situation',
+    'appointments: own only',
+    'test_results: file_name, created_at, patient_note',
+  ],
+  doctorOnly: [
+    'visit_summaries (all)',
+    'visit_summary_addendums (all)',
+    'visit_vital_signs (all)',
+    'client_allergies: severity, notes',
+    'client_medications: inactive rows, indication, notes',
+    'client_problems: icd10_code, notes, inactive/resolved rows',
+    'client_family_history: notes',
+    'client_social_history: detail fields',
+    'test_results: doctor_label, doctor_note, file contents',
+    'audit_logs (all)',
+    'clients.medical_history',
+  ],
+} as const;

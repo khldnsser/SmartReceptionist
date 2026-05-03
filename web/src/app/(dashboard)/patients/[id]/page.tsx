@@ -1,14 +1,14 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import ProfileEditor from '@/components/patients/ProfileEditor';
-import VisitSummaryPanel from '@/components/patients/VisitSummaryPanel';
-import TestResultsPanel from '@/components/patients/TestResultsPanel';
-import AppointmentsWithSummary from '@/components/patients/AppointmentsWithSummary';
-import MedicalRecordPanel from '@/components/patients/MedicalRecordPanel';
-import VitalSignsPanel from '@/components/patients/VitalSignsPanel';
-import TimelinePanel from '@/components/patients/TimelinePanel';
-import MessagePatientButton from '@/components/patients/MessagePatientButton';
+import ProfileEditor from '@/features/patients/ProfileEditor';
+import VisitSummaryPanel from '@/features/visit-summaries/VisitSummaryPanel';
+import TestResultsPanel from '@/features/test-results/TestResultsPanel';
+import AppointmentsWithSummary from '@/features/medical-record/AppointmentsWithSummary';
+import MedicalRecordPanel from '@/features/medical-record/MedicalRecordPanel';
+import VitalSignsPanel from '@/features/medical-record/VitalSignsPanel';
+import TimelinePanel from '@/features/medical-record/TimelinePanel';
+import MessagePatientButton from '@/features/patients/MessagePatientButton';
 import RealtimeRefresher from '@/components/RealtimeRefresher';
 
 interface Props {

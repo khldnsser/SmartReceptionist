@@ -1,12 +1,6 @@
-import OpenAI, { toFile } from 'openai';
-import { config } from '../config';
+import { toFile } from 'openai';
+import { openai } from '../infra/openai/client';
 
-const openai = new OpenAI({ apiKey: config.openai.apiKey });
-
-/**
- * Transcribes audio to text using OpenAI Whisper.
- * Returns the transcription in the original language spoken.
- */
 export async function transcribeAudio(buffer: Buffer, mimeType: string): Promise<string> {
   const ext = mimeExtToFileExt(mimeType);
   const file = await toFile(buffer, `audio.${ext}`, { type: mimeType });

@@ -1,5 +1,5 @@
 import type OpenAI from 'openai';
-import { supabase } from '../db/client';
+import { supabase } from '../infra/supabase/client';
 
 type ChatMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 
@@ -59,9 +59,6 @@ function messageToRow(waId: string, msg: ChatMessage): MessageRow {
   return row;
 }
 
-/**
- * Returns the last WINDOW_SIZE messages for a session, in chronological order.
- */
 export async function getHistory(sessionId: string): Promise<ChatMessage[]> {
   const { data, error } = await supabase
     .from('conversation_messages')
@@ -73,22 +70,15 @@ export async function getHistory(sessionId: string): Promise<ChatMessage[]> {
   if (error) throw new Error(`${error.message} [${error.code}]`);
   if (!data || data.length === 0) return [];
 
-  // Reverse so the result is oldest → newest (chronological for the LLM)
   return (data as MessageRow[]).reverse().map(rowToMessage);
 }
 
-/**
- * Persists a single message to the sliding-window store.
- */
 export async function addMessage(sessionId: string, message: ChatMessage): Promise<void> {
   const row = messageToRow(sessionId, message);
   const { error } = await supabase.from('conversation_messages').insert(row);
   if (error) throw new Error(`${error.message} [${error.code}]`);
 }
 
-/**
- * Deletes all conversation history for a session.
- */
 export async function clearHistory(sessionId: string): Promise<void> {
   const { error } = await supabase
     .from('conversation_messages')

@@ -1,8 +1,0 @@
-{
-  "/api/patients/[id]/export/route": "app/api/patients/[id]/export/route.js",
-  "/(dashboard)/patients/[id]/page": "app/(dashboard)/patients/[id]/page.js",
-  "/(dashboard)/settings/page": "app/(dashboard)/settings/page.js",
-  "/(dashboard)/today/page": "app/(dashboard)/today/page.js",
-  "/(dashboard)/patients/page": "app/(dashboard)/patients/page.js",
-  "/(dashboard)/calendar/page": "app/(dashboard)/calendar/page.js"
-}

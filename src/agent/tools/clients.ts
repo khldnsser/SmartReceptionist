@@ -1,5 +1,6 @@
 import type OpenAI from 'openai';
-import * as clients from '../../db/clients';
+import * as clientService from '../../services/client.service';
+import type { ClientFields } from '../../repositories/client.repo';
 
 export const definitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -62,13 +63,13 @@ type Args = Record<string, unknown>;
 export async function execute(waId: string, name: string, args: Args): Promise<string> {
   switch (name) {
     case 'get_client':
-      return JSON.stringify(await clients.getClientByWaId(waId));
+      return JSON.stringify(await clientService.getClient(waId));
 
     case 'upsert_client':
-      return JSON.stringify(await clients.upsertClient(waId, args as clients.ClientFields));
+      return JSON.stringify(await clientService.upsertClient(waId, args as ClientFields));
 
     case 'update_client':
-      return JSON.stringify(await clients.updateClient(waId, args as clients.ClientFields));
+      return JSON.stringify(await clientService.updateClient(waId, args as ClientFields));
 
     default:
       return JSON.stringify({ error: `Unknown client tool: ${name}` });

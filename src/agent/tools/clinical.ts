@@ -1,7 +1,7 @@
 import type OpenAI from 'openai';
-import * as clinical from '../../db/clinical';
-import { supabase } from '../../db/client';
-import { getClientByWaId } from '../../db/clients';
+import * as clinical from '../../repositories/clinical.repo';
+import { supabase } from '../../infra/supabase/client';
+import { getClientByWaId } from '../../repositories/client.repo';
 
 export const definitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -60,10 +60,7 @@ export const definitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   },
 ];
 
-async function writeAuditLog(
-  waId: string,
-  resourceType: string,
-): Promise<void> {
+async function writeAuditLog(waId: string, resourceType: string): Promise<void> {
   try {
     const client = await getClientByWaId(waId);
     if (!client) return;

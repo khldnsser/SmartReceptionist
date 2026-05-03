@@ -6,3 +6,6 @@ google-service-account.json
 web/.env.local
 .env.example
 web/.env.example
+web/.next/
+dist/
+build/

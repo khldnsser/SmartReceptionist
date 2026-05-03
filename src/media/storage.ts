@@ -1,11 +1,7 @@
-import { supabase } from '../db/client';
+import { supabase } from '../infra/supabase/client';
 
 const BUCKET = 'patient-uploads';
 
-/**
- * Uploads a media buffer to Supabase Storage under {waId}/{timestamp}_{fileName}.
- * Returns the storage path on success.
- */
 export async function uploadMediaToStorage(
   waId: string,
   buffer: Buffer,
@@ -23,7 +19,6 @@ export async function uploadMediaToStorage(
   return path;
 }
 
-/** Returns a signed URL for the given storage path (default 1-hour expiry). */
 export async function getSignedUrl(storagePath: string, expiresInSeconds = 3600): Promise<string> {
   const { data, error } = await supabase.storage
     .from(BUCKET)

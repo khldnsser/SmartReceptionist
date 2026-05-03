@@ -1,18 +1,11 @@
-import OpenAI from 'openai';
 import { config } from '../config';
-
-const openai = new OpenAI({ apiKey: config.openai.apiKey });
+import { openai } from '../infra/openai/client';
 
 export interface ImageAnalysis {
   description: string;
   label: string;
 }
 
-/**
- * Analyzes an image using GPT-4o-mini vision.
- * Returns a detailed description for the agent and a short label (3-5 words) for use as a filename.
- * Uses recent conversation context to produce a more meaningful label.
- */
 export async function analyzeImage(
   buffer: Buffer,
   mimeType: string,

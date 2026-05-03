@@ -2,8 +2,8 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import PatientSearch from '@/components/patients/PatientSearch';
-import NewPatientButton from '@/components/patients/NewPatientButton';
+import PatientSearch from '@/features/patients/PatientSearch';
+import NewPatientButton from '@/features/patients/NewPatientButton';
 import RealtimeRefresher from '@/components/RealtimeRefresher';
 
 interface Props {
