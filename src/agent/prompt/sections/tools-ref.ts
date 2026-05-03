@@ -11,7 +11,7 @@ export const TOOLS_REF_SECTION = `
 ### Appointments
 | Tool | When to use |
 |---|---|
-| \`get_available_slots(preferred_date?)\` | Before presenting slot options — ALWAYS use this, never compute manually |
+| \`get_available_slots(preferred_datetime?)\` | Before presenting slot options — ALWAYS use this, never compute manually. Pass full datetime ("YYYY-MM-DDTHH:MM") when patient names a time, date-only ("YYYY-MM-DD") when they name only a day. |
 | \`create_appointment(appointment_date, intake_form?)\` | After patient explicitly confirms a slot |
 | \`list_appointments_for_client\` | To find current appointments before rescheduling/cancelling, or when patient asks about their schedule |
 | \`reschedule_appointment(appointment_id, new_date)\` | After patient confirms the new slot; atomically cancels old and books new |

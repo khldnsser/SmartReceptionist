@@ -4,6 +4,24 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createAppointmentAction } from './actions';
 
+// Convert a naive datetime-local value ("YYYY-MM-DDTHH:MM") to a timezone-aware ISO
+// string by appending the current Beirut UTC offset. This ensures Postgres stores
+// the correct UTC time regardless of the server's TZ setting.
+function naiveToBerutISO(naive: string): string {
+  const approx = new Date(naive + ':00Z');
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: 'Asia/Beirut',
+    timeZoneName: 'shortOffset',
+  }).formatToParts(approx);
+  const tzName = parts.find(p => p.type === 'timeZoneName')?.value ?? 'GMT+3';
+  const match = tzName.match(/GMT([+-])(\d+)(?::(\d+))?/);
+  if (!match) return `${naive}:00+03:00`;
+  const sign = match[1];
+  const h = match[2].padStart(2, '0');
+  const m = (match[3] ?? '0').padStart(2, '0');
+  return `${naive}:00${sign}${h}:${m}`;
+}
+
 type ApptType = 'initial' | 'follow_up' | 'procedure' | 'telemedicine';
 
 interface Client {
@@ -63,7 +81,7 @@ export default function CreateEventModal({ clients, defaultDate, onClose }: Prop
         clientId,
         selectedClient!.wa_id,
         selectedClient!.name ?? 'Patient',
-        date + ':00',
+        naiveToBerutISO(date),
         intakeForm || undefined,
         apptType,
         duration,

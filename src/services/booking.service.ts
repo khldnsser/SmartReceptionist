@@ -1,20 +1,33 @@
 import { DateTime } from 'luxon';
 import { config } from '../core/config';
+import { logger } from '../core/logger';
 import * as appointmentRepo from '../repositories/appointment.repo';
 import * as clientRepo from '../repositories/client.repo';
 import { getNextAvailableSlots } from '../domain/booking/availability';
 import type { TimeSlot } from '../domain/booking/availability';
 import type { Appointment } from '../repositories/appointment.repo';
 
-export async function getAvailableSlots(preferredDate?: string): Promise<TimeSlot[]> {
+export async function getAvailableSlots(preferredDatetime?: string): Promise<TimeSlot[]> {
   const tz = config.business.timezone;
   const now = DateTime.now().setZone(tz);
   let searchFrom: DateTime | undefined;
-  if (preferredDate) {
-    searchFrom = DateTime.fromISO(preferredDate, { zone: tz }).startOf('day');
+  if (preferredDatetime) {
+    const parsed = DateTime.fromISO(preferredDatetime, { zone: tz });
+    // Date-only string (YYYY-MM-DD) → start of that day; datetime string → exact time
+    searchFrom = preferredDatetime.length <= 10 ? parsed.startOf('day') : parsed;
   }
   const booked = await appointmentRepo.listBookedAppointmentsFrom(now.toISO()!);
-  return getNextAvailableSlots(now, booked, searchFrom);
+  const slots = getNextAvailableSlots(now, booked, searchFrom);
+  logger.debug({
+    preferredDatetime,
+    now: now.toISO(),
+    searchFrom: searchFrom?.toISO(),
+    bookedCount: booked.length,
+    bookedDates: booked.map(b => b.start),
+    slotsFound: slots.length,
+    slots,
+  }, '[SLOTS] availability query');
+  return slots;
 }
 
 export async function bookAppointment(

@@ -49,6 +49,23 @@ function toLocalDatetimeValue(iso: string) {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
+// Convert a naive datetime-local value ("YYYY-MM-DDTHH:MM") to a timezone-aware ISO
+// string with the Beirut offset, so Postgres stores the correct UTC time.
+function naiveToBerutISO(naive: string): string {
+  const approx = new Date(naive + ':00Z');
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: 'Asia/Beirut',
+    timeZoneName: 'shortOffset',
+  }).formatToParts(approx);
+  const tzName = parts.find(p => p.type === 'timeZoneName')?.value ?? 'GMT+3';
+  const match = tzName.match(/GMT([+-])(\d+)(?::(\d+))?/);
+  if (!match) return `${naive}:00+03:00`;
+  const sign = match[1];
+  const h = match[2].padStart(2, '0');
+  const m = (match[3] ?? '0').padStart(2, '0');
+  return `${naive}:00${sign}${h}:${m}`;
+}
+
 interface ExistingSummary {
   id: string;
   diagnosis: string | null;
@@ -107,7 +124,7 @@ export default function EventModal({ event, onClose }: Props) {
     setErr('');
     const e = event;
     startTransition(async () => {
-      const res = await rescheduleAppointmentAction(e.id, newDate + ':00', e.waId, e.clientName, e.start);
+      const res = await rescheduleAppointmentAction(e.id, naiveToBerutISO(newDate), e.waId, e.clientName, e.start);
       if (!res.ok) { setErr(res.error ?? 'Failed'); return; }
       router.refresh();
       onClose();
