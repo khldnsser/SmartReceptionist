@@ -43,8 +43,16 @@ interface Appointment {
   id: string;
   appointment_date: string;
   booking_status: string;
+  appointment_type: string | null;
   clients: { id: string; name: string | null; phone: string | null } | null;
 }
+
+const TYPE_LABEL: Record<string, string> = {
+  initial:     'Initial',
+  follow_up:   'Follow-up',
+  procedure:   'Procedure',
+  telemedicine:'Telemedicine',
+};
 
 function AppointmentRow({ appt }: { appt: Appointment }) {
   const patientName = appt.clients?.name ?? 'Unknown patient';
@@ -58,6 +66,11 @@ function AppointmentRow({ appt }: { appt: Appointment }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {patientName}
+          {appt.appointment_type && (
+            <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--ink-muted)', marginLeft: 8 }}>
+              · {TYPE_LABEL[appt.appointment_type] ?? appt.appointment_type}
+            </span>
+          )}
         </p>
         {appt.clients?.phone && (
           <p style={{ fontSize: 12, color: 'var(--ink-faint)', marginTop: 1 }}>{appt.clients.phone}</p>
@@ -94,13 +107,13 @@ export default async function TodayPage() {
   const [{ data: todayRaw }, { data: weekRaw }] = await Promise.all([
     admin
       .from('appointments')
-      .select('id, appointment_date, booking_status, clients(id, name, phone)')
+      .select('id, appointment_date, booking_status, appointment_type, clients(id, name, phone)')
       .gte('appointment_date', todayStart)
       .lt('appointment_date', tomorrowStart)
       .order('appointment_date'),
     admin
       .from('appointments')
-      .select('id, appointment_date, booking_status, clients(id, name, phone)')
+      .select('id, appointment_date, booking_status, appointment_type, clients(id, name, phone)')
       .gte('appointment_date', tomorrowStart)
       .lt('appointment_date', in8DaysStart)
       .eq('booking_status', 'booked')

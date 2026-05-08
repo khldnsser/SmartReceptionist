@@ -7,7 +7,15 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
-    "dev:watch": "ts-node-dev --respawn src/server.ts"
+    "dev:watch": "ts-node-dev --respawn src/server.ts",
+    "web:dev": "npm --prefix web run dev",
+    "web:lint": "npm --prefix web run lint",
+    "web:type-check": "npm --prefix web run type-check",
+    "web:build": "npm --prefix web run build",
+    "check": "npm run build && npm run web:lint && npm run web:type-check && npm run web:build",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",

@@ -8,7 +8,15 @@ interface Appointment {
   appointment_date: string;
   booking_status: string;
   intake_form: string | null;
+  appointment_type: string | null;
 }
+
+const TYPE_LABEL: Record<string, string> = {
+  initial:     'Initial',
+  follow_up:   'Follow-up',
+  procedure:   'Procedure',
+  telemedicine:'Telemedicine',
+};
 
 interface Summary {
   id: string;
@@ -101,6 +109,11 @@ export default function AppointmentsWithSummary({ appointments, summaries, clien
                     timeZone: 'Asia/Beirut', weekday: 'short', month: 'short', day: 'numeric',
                     year: 'numeric', hour: '2-digit', minute: '2-digit',
                   })}
+                  {appt.appointment_type && (
+                    <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--ink-muted)', marginLeft: 8 }}>
+                      · {TYPE_LABEL[appt.appointment_type] ?? appt.appointment_type}
+                    </span>
+                  )}
                 </p>
                 {appt.intake_form && (
                   <p style={{ fontSize: 12, color: 'var(--ink-faint)', marginTop: 2 }}>{appt.intake_form}</p>

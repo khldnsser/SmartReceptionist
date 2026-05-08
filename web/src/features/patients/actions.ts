@@ -10,10 +10,17 @@ export async function createClientAction(fields: {
   age?: number | null;
 }): Promise<{ ok: boolean; id?: string; error?: string }> {
   if (!fields.name.trim()) return { ok: false, error: 'Name is required' };
+
+  const phoneDigits = fields.phone?.replace(/\D/g, '') || null;
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('clients')
-    .insert({ wa_id: null, ...fields })
+    .insert({
+      ...fields,
+      phone: phoneDigits,
+      wa_id: phoneDigits,
+    })
     .select('id')
     .single();
   if (error) return { ok: false, error: error.message };

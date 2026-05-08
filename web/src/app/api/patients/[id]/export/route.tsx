@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { ReactElement } from 'react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { PatientPdfDocument } from '@/lib/patient-pdf';
@@ -55,7 +56,6 @@ export async function GET(
   const safeFilename = (client.name ?? 'patient').replace(/[^a-z0-9]/gi, '-').toLowerCase();
   const dateSlug = new Date().toISOString().split('T')[0];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buffer = await renderToBuffer(<PatientPdfDocument
     client={client}
     allergies={allergies ?? []}
@@ -64,7 +64,7 @@ export async function GET(
     vitals={vitalsRaw?.[0] ?? null}
     summaries={summaries}
     exportedAt={exportedAt}
-  /> as any);
+  /> as ReactElement);
 
   return new NextResponse(buffer as unknown as BodyInit, {
     headers: {

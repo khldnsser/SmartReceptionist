@@ -79,7 +79,7 @@ export default function MessagePatientButton({ clientId, hasWhatsApp }: Props) {
               Message patient
             </h2>
             <p style={{ fontSize: 13, color: 'var(--ink-faint)', marginBottom: 20 }}>
-              Sent via WhatsApp. Appears in the agent's conversation history.
+              Sent via WhatsApp. Appears in the agent conversation history.
             </p>
 
             {err && <div className="error-msg" style={{ marginBottom: 16 }}>{err}</div>}

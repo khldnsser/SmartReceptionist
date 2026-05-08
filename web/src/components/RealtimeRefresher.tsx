@@ -27,8 +27,7 @@ export default function RealtimeRefresher({ table, filter }: Props) {
     const channel = supabase
       .channel(`pms:${table}${filter ? `:${filter}` : ''}`)
       .on(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        'postgres_changes' as any,
+        'postgres_changes',
         {
           event: '*',
           schema: 'public',

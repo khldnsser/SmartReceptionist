@@ -4,7 +4,15 @@ interface Appointment {
   id: string;
   appointment_date: string;
   booking_status: string;
+  appointment_type: string | null;
 }
+
+const TYPE_LABEL: Record<string, string> = {
+  initial:     'Initial',
+  follow_up:   'Follow-up',
+  procedure:   'Procedure',
+  telemedicine:'Telemedicine',
+};
 
 interface Addendum {
   id: string;
@@ -87,16 +95,18 @@ export default function TimelinePanel({ clientId, appointments, summaries, resul
   const events: TimelineEvent[] = [];
 
   for (const a of appointments) {
+    const dateText = new Date(a.appointment_date).toLocaleString('en-US', {
+      timeZone: 'Asia/Beirut',
+      weekday: 'short', month: 'short', day: 'numeric',
+      year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    const typeLabel = a.appointment_type ? (TYPE_LABEL[a.appointment_type] ?? a.appointment_type) : null;
     events.push({
       key: `appt-${a.id}`,
       date: new Date(a.appointment_date),
       type: 'appointment',
       tabLink: `/patients/${clientId}?tab=appointments`,
-      title: new Date(a.appointment_date).toLocaleString('en-US', {
-        timeZone: 'Asia/Beirut',
-        weekday: 'short', month: 'short', day: 'numeric',
-        year: 'numeric', hour: '2-digit', minute: '2-digit',
-      }),
+      title: typeLabel ? `${dateText} · ${typeLabel}` : dateText,
       badge: a.booking_status,
     });
   }

@@ -10,6 +10,13 @@ const TYPE_COLORS: Record<string, string> = {
   telemedicine:'#0891b2',
 };
 
+const TYPE_LABEL: Record<string, string> = {
+  initial:     'Initial',
+  follow_up:   'Follow-up',
+  procedure:   'Procedure',
+  telemedicine:'Telemedicine',
+};
+
 const STATUS_COLORS: Record<string, string> = {
   completed: '#6e6e73',
   cancelled:  '#d93025',
@@ -55,9 +62,11 @@ export default async function CalendarPage() {
     const apptType = (appt.appointment_type as string | null) ?? 'follow_up';
     const color = STATUS_COLORS[status] ?? TYPE_COLORS[apptType] ?? '#0066cc';
 
+    const typeLabel = TYPE_LABEL[apptType] ?? apptType;
+
     return {
       id: appt.id as string,
-      title: (client?.name ?? 'Unknown patient') as string,
+      title: `${client?.name ?? 'Unknown patient'} · ${typeLabel}`,
       start,
       end,
       backgroundColor: color,

@@ -16,6 +16,7 @@ interface Summary {
   id: string;
   appointment_id: string | null;
   appointment_date: string | null;
+  appointment_type: string | null;
   created_at: string;
   diagnosis: string | null;
   notes: string | null;
@@ -25,6 +26,13 @@ interface Summary {
   signed_by: string | null;
   addendums: Addendum[];
 }
+
+const TYPE_LABEL: Record<string, string> = {
+  initial:     'Initial',
+  follow_up:   'Follow-up',
+  procedure:   'Procedure',
+  telemedicine:'Telemedicine',
+};
 
 interface Props {
   summaries: Summary[];
@@ -142,7 +150,14 @@ function SummaryCard({ summary, clientId }: { summary: Summary; clientId: string
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
           {apptDate
-            ? <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--blue)' }}>Appointment: {apptDate}</p>
+            ? <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--blue)' }}>
+                Appointment: {apptDate}
+                {summary.appointment_type && (
+                  <span style={{ color: 'var(--ink-muted)', fontWeight: 400 }}>
+                    {' · '}{TYPE_LABEL[summary.appointment_type] ?? summary.appointment_type}
+                  </span>
+                )}
+              </p>
             : <p style={{ fontSize: 13, color: 'var(--ink-faint)' }}>
                 {new Date(summary.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>}

@@ -80,7 +80,15 @@ export default async function PatientProfilePage({ params, searchParams }: Props
     );
   }
 
-  const apptMap = new Map((appointments ?? []).map(a => [a.id as string, a.appointment_date as string]));
+  const apptMap = new Map(
+    (appointments ?? []).map(a => [
+      a.id as string,
+      {
+        date: a.appointment_date as string,
+        type: (a.appointment_type as string | null) ?? null,
+      },
+    ]),
+  );
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: 'timeline',     label: 'Timeline' },
@@ -159,12 +167,16 @@ export default async function PatientProfilePage({ params, searchParams }: Props
                 id: a.id as string,
                 appointment_date: a.appointment_date as string,
                 booking_status: a.booking_status as string,
+                appointment_type: (a.appointment_type as string | null) ?? null,
               }))}
               summaries={(summaries ?? []).map(s => ({
                 id: s.id as string,
                 created_at: s.created_at as string,
                 diagnosis: s.diagnosis as string | null,
                 signed_at: s.signed_at as string | null,
+                appointment_type: s.appointment_id
+                  ? (apptMap.get(s.appointment_id as string)?.type ?? null)
+                  : null,
                 addendums: (addendums ?? [])
                   .filter(a => a.summary_id === s.id)
                   .map(a => ({
@@ -238,6 +250,7 @@ export default async function PatientProfilePage({ params, searchParams }: Props
                   appointment_date: a.appointment_date as string,
                   booking_status: a.booking_status as string,
                   intake_form: a.intake_form as string | null,
+                  appointment_type: (a.appointment_type as string | null) ?? null,
                 }))}
                 summaries={(summaries ?? []).map(s => ({
                   id: s.id as string,
@@ -255,7 +268,8 @@ export default async function PatientProfilePage({ params, searchParams }: Props
               summaries={(summaries ?? []).map(s => ({
                 id: s.id as string,
                 appointment_id: s.appointment_id as string | null,
-                appointment_date: s.appointment_id ? (apptMap.get(s.appointment_id as string) ?? null) : null,
+                appointment_date: s.appointment_id ? (apptMap.get(s.appointment_id as string)?.date ?? null) : null,
+                appointment_type: s.appointment_id ? (apptMap.get(s.appointment_id as string)?.type ?? null) : null,
                 created_at: s.created_at as string,
                 diagnosis: s.diagnosis as string | null,
                 notes: s.notes as string | null,

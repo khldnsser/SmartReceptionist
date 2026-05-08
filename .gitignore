@@ -1,11 +1,29 @@
+# Dependencies
 node_modules/
+web/node_modules/
+
+# Environment and local secrets
 .env
-.claude/
-google-service-account.json
 .env.local
+.env.*.local
+web/.env
 web/.env.local
-.env.example
-web/.env.example
-web/.next/
+web/.env.*.local
+!.env.example
+!web/.env.example
+
+# Build output and generated files
 dist/
 build/
+web/.next/
+*.tsbuildinfo
+coverage/
+
+# Logs and local tool state
+*.log
+npm-debug.log*
+.DS_Store
+.claude/
+
+# Legacy local credentials
+google-service-account.json
